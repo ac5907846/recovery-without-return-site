@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Structural loss | Recovery without return</title>
+<meta name="description" content="Interactive companion to a study of whether the physical recovery of damaged homes also means that their pre-disaster owners keep them, read on Florida&#x27;s parcel records: the five paths of a destroyed home and the H1 estimates with their checks.">
+<meta name="theme-color" content="#16385c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 8 8 3l6 5v6H2z' fill='%23a8325e'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css?v=1">
+<link rel="preload" href="data/meta.json?v=1" as="fetch" crossorigin>
+<link rel="preload" href="data/loss.json?v=1" as="fetch" crossorigin>
+<link rel="modulepreload" href="js/shell.js?v=1">
+</head>
+<body class="page-loss">
+
+<a class="skip" href="#page">Skip to content</a>
+<header class="masthead" id="masthead">
+  <div class="masthead-inner">
+    <a class="homelink" href="index.html">Recovery without return</a>
+    <p class="crumb">Physical housing recovery and ownership continuity after seven Florida hurricane seasons, 2016 to 2024</p>
+  </div>
+</header>
+<nav class="sitenav" id="sitenav" aria-label="Pages">
+  <div class="sitenav-inner">
+    <ul>
+      <li><a href="index.html">Two clocks</a></li>
+      <li><a href="clocks.html">The gap</a></li>
+      <li><a href="map.html">Seven seasons</a></li>
+      <li><a href="loss.html">Structural loss</a></li>
+      <li><a href="capital.html">Financial resources</a></li>
+      <li><a href="owners.html">Owner occupancy</a></li>
+      <li><a href="shore.html">The shore</a></li>
+      <li><a href="data.html">Data and methods</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main id="page" class="section">
+  <header class="lede">
+    <h1>Structural loss: the greater the loss, the more often a restored home has a new owner</h1>
+    <p class="finding" id="finding"></p>
+  </header>
+  <div class="chart-block" id="chart"></div>
+</main>
+
+<footer class="foot">
+  <p>Records: <a href="https://floridarevenue.com/property/dataportal" rel="noopener">Florida Department of Revenue assessment rolls and sales files</a>; <a href="https://www.fema.gov/about/openfema/data-sets" rel="noopener">OpenFEMA</a> Individuals and Households Program registrations and National Flood Insurance Program policies and claims; <a href="https://www.fema.gov/flood-maps/national-flood-hazard-layer" rel="noopener">National Flood Hazard Layer</a>; <a href="https://www.census.gov/programs-surveys/acs" rel="noopener">American Community Survey</a>; <a href="https://www.nhc.noaa.gov/data/#hurdat" rel="noopener">HURDAT2</a>; <a href="https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html" rel="noopener">TIGER/Line boundaries</a>; <a href="https://capecoral-capegis.opendata.arcgis.com/" rel="noopener">City of Cape Coral</a> and Charlotte County building permits. Every number on this site is rebuilt from the analysis results by one script (<a href="data.html">Data and methods</a>).</p>
+</footer>
+
+<div id="tooltip" class="tooltip" role="status" aria-live="polite"></div>
+
+<script type="module" src="js/pages/loss.js?v=1"></script>
+</body>
+</html>
