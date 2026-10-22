@@ -170,9 +170,38 @@ def pages_js():
             f"export const GEO = {json.dumps(GEO)};\n")
 
 
+def not_found():
+    """A plain 404 page, so an unknown address does not fall back to the landing page."""
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found | {escape(TITLE)}</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/css/style.css?v={VERSION}">
+</head>
+<body>
+<header class="masthead">
+  <div class="masthead-inner">
+    <a class="homelink" href="/">{escape(TITLE)}</a>
+    <p class="crumb">{escape(SUBTITLE)}</p>
+  </div>
+</header>
+<main class="section">
+  <header class="lede">
+    <h1>This page does not exist</h1>
+    <p class="finding">The site has eight pages; start from <a href="/">the two clocks</a>.</p>
+  </header>
+</main>
+</body>
+</html>
+"""
+
+
 def public_files():
     """Every file a deployment carries, relative to the app folder."""
-    out = {"css/style.css", "js/shell.js", "js/pages.js", *FILES.values(), *GEO}
+    out = {"404.html", "css/style.css", "js/shell.js", "js/pages.js", *FILES.values(), *GEO}
     out |= {f"js/lib/{p.name}" for p in (APP / "js" / "lib").glob("*.js")}
     for p in PAGES:
         out |= {p["file"], f"js/pages/{p['id']}.js", f"js/charts/{p['id']}.js"}
@@ -184,7 +213,8 @@ def write():
         (APP / p["file"]).write_text(html(p), encoding="utf-8", newline="\n")
         (APP / "js" / "pages" / f'{p["id"]}.js').write_text(page_module(p), encoding="utf-8", newline="\n")
     (APP / "js" / "pages.js").write_text(pages_js(), encoding="utf-8", newline="\n")
-    print(f"  {len(PAGES)} pages, js/pages.js and the page modules written (site version {VERSION})")
+    (APP / "404.html").write_text(not_found(), encoding="utf-8", newline="\n")
+    print(f"  {len(PAGES)} pages, 404.html, js/pages.js and the page modules written (site version {VERSION})")
 
 
 if __name__ == "__main__":
