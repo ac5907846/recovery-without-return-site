@@ -1,17 +1,17 @@
 r"""The Financial resources page (H2): the surfaces of Figure 6 as an
-interactive grid, and every H2 estimate (Table 4) with the flood-zone
-results of Section 5.3.
+interactive grid, every estimate of Table 5, and the flood-zone estimates
+of Table S4 and Section 5.3.
 
 Reads a18 surfaces.csv (written by a18 site_export.py from the figure's
 own grid), nfip_tests.csv, sfha_attenuation.csv, coastal_models.csv,
 continuous.csv, capital_corr.csv; a15 h6_models.csv.
 """
 
-from .common import check, est, num, pct, q, rd
+from .common import check, check_groups, est, num, pct, q, rd
 
-OUTCOMES = [("return", "Recovery with return", "the pre-storm owner holds the restored house with its homestead"),
-            ("changed", "Owner change", "the house is under a new owner"),
-            ("F", "Value regained", "fraction of the pre-storm structure value regained")]
+OUTCOMES = [("return", "Restoration under original ownership", "restored, the original owner recorded with the homestead exemption"),
+            ("changed", "Ownership change", "a new owner recorded"),
+            ("F", "Capped R", "the structural value ratio, capped at 100%")]
 
 
 def surfaces():
@@ -30,6 +30,7 @@ def surfaces():
 
 
 def estimates():
+    """Every row of Table 5 and Table S4: main = the index K in the main specification, alt = another measure or sample."""
     h6 = rd("a15_recovery_tests", "h6_models.csv")
     nt = rd("a18_two_clocks", "nfip_tests.csv")
     cont = rd("a18_two_clocks", "continuous.csv")
@@ -38,35 +39,29 @@ def estimates():
     c2 = cont[cont["model"].str.startswith("P2")].set_index("term")
     rows = []
 
-    def add(group, label, row, status, **kw):
-        rows.append({"group": group, "label": label, "status": status, **est(row, **kw)})
+    def add(group, label, row, main=False, **kw):
+        rows.append({"group": group, "label": label, "main": main, **est(row, **kw)})
 
     for oc in ("return", "changed"):
-        for cap, label, status in (("K", "damage × K", "pre-specified"),
-                                   ("z_ins", "damage × insured share", "part of K"),
-                                   ("z_linc", "damage × tract income", "part of K"),
-                                   ("K_D20", "damage × K, tracts with D of 20 or more", "check"),
-                                   ("K_added_without_Lee", "damage × K, without Lee County", "added check")):
-            add(oc, label, q(h6, outcome=oc, capital=cap, cluster="county", term="damaged_x_K"), status)
-        add(oc, "damage × K, tract clusters", q(h6, outcome=oc, capital="K", cluster="tract", term="damaged_x_K"), "check")
-        add(oc, "damage × NFIP policies in force at landfall", q(nt, outcome=oc, measure="NFIP penetration"), "pre-specified")
-        add(oc, "damage × NFIP claims per 100 damaged houses", q(nt, outcome=oc, measure="NFIP claims per 100 damaged houses"),
-            "reported")
-    add("F", "damage × K", c2.loc["damaged_x_K"], "pre-specified")
-    add("business", "damage × K", q(h6, outcome="business_owner", capital="K", cluster="county", term="damaged_x_K"),
-        "description")
-    add("business", "damage × NFIP policies in force at landfall", q(nt, outcome="business_owner", measure="NFIP penetration"),
-        "description")
+        for cap, label, main in (("K", "L25 × K", True),
+                                 ("z_ins", "L25 × insured share", False),
+                                 ("z_linc", "L25 × tract income", False),
+                                 ("K_D20", "L25 × K, tracts with D ≥20", False),
+                                 ("K_added_without_Lee", "L25 × K, without Lee County", False)):
+            add(oc, label, q(h6, outcome=oc, capital=cap, cluster="county", term="damaged_x_K"), main)
+        add(oc, "L25 × K, tract clusters", q(h6, outcome=oc, capital="K", cluster="tract", term="damaged_x_K"))
+        add(oc, "L25 × NFIP penetration", q(nt, outcome=oc, measure="NFIP penetration"))
+        add(oc, "L25 × NFIP claims", q(nt, outcome=oc, measure="NFIP claims per 100 damaged houses"))
+    add("F", "L25 × K", c2.loc["damaged_x_K"], True)
+    add("business", "L25 × K", q(h6, outcome="business_owner", capital="K", cluster="county", term="damaged_x_K"), True)
+    add("business", "L25 × NFIP penetration", q(nt, outcome="business_owner", measure="NFIP penetration"))
     sA, sB = att.iloc[0], att.iloc[1]
-    rows.append({"group": "flood", "label": "damage × SFHA (with K)", "status": "reported",
-                 **est(sA, e="damaged_x_sfha")})
-    rows.append({"group": "flood", "label": "damage × SFHA, NFIP policies added", "status": "reported",
+    rows.append({"group": "flood", "label": "L25 × SFHA", "main": True, **est(sA, e="damaged_x_sfha")})
+    rows.append({"group": "flood", "label": "L25 × SFHA, adjusted for NFIP penetration", "main": False,
                  "absorbed": float(sB["share_absorbed"]), **est(sB, e="damaged_x_sfha")})
-    rows.append({"group": "flood", "label": "damage × NFIP policies beside the SFHA", "status": "reported",
-                 **est(sB, e="damaged_x_nfip", lo="nfip_ci_low", hi="nfip_ci_high"), "p": float(sB["nfip_p"])})
-    add("flood", "damage × A zones (riverine and ponding flood)", q(cm, model="P2: return, s+2", term="damaged_x_sfha"),
-        "description")
-    add("flood", "damage × V zone (wave action)", q(cm, model="P2: return, s+2", term="damaged_x_vzone"), "description")
+    add("flood", "L25 × A zone", q(cm, model="P2: return, s+2", term="damaged_x_sfha"))
+    add("flood", "L25 × V zone, relative to A zones", q(cm, model="P2: return, s+2", term="damaged_x_vzone"))
+    add("flood", "L25 × V zone, relative to outside the SFHA", q(cm, model="P2: return, s+2", term="damaged_x_vzone_vs_outside"))
     return rows
 
 
@@ -87,37 +82,29 @@ def checks(files):
     def g(group, label):
         return next(r for r in e if r["group"] == group and r["label"] == label)
 
-    rk, ck = g("return", "damage × K"), g("changed", "damage × K")
-    ri, ci = g("return", "damage × insured share"), g("changed", "damage × insured share")
-    rl, cl = g("return", "damage × tract income"), g("changed", "damage × tract income")
-    fk = g("F", "damage × K")
-    rn, cn = g("return", "damage × NFIP policies in force at landfall"), g("changed", "damage × NFIP policies in force at landfall")
-    rc = g("return", "damage × NFIP claims per 100 damaged houses")
-    rd20 = g("return", "damage × K, tracts with D of 20 or more")
-    bus = g("business", "damage × K")
-    sA, sB = g("flood", "damage × SFHA (with K)"), g("flood", "damage × SFHA, NFIP policies added")
-    az, vz = g("flood", "damage × A zones (riverine and ponding flood)"), g("flood", "damage × V zone (wave action)")
-    iv = lambda r: f"{num(r['lo'], 1)} to {num(r['hi'], 1)}"  # noqa: E731
+    rk, ck = g("return", "L25 × K"), g("changed", "L25 × K")
+    fk = g("F", "L25 × K")
+    rn, cn = g("return", "L25 × NFIP penetration"), g("changed", "L25 × NFIP penetration")
+    bus = g("business", "L25 × K")
+    sA, sB = g("flood", "L25 × SFHA"), g("flood", "L25 × SFHA, adjusted for NFIP penetration")
+    ci = lambda r: f"95% CI [{num(r['lo'], 1)}, {num(r['hi'], 1)}]"  # noqa: E731
     return [
-        check("H2 return: damage × K (pp per SD)", num(rk["e"], 1), r"at s\+2 by ([\d.]+) pp \("),
-        check("H2 return: interval", iv(rk), r"at s\+2 by [\d.]+ pp \(([-.\d]+ to [-.\d]+); base"),
-        check("H2 return: base", pct(rk["base"]), r"at s\+2 by [\d.]+ pp \([-.\d]+ to [-.\d]+; base (\d+%)\)"),
-        check("H2 owner change: damage × K", num(-ck["e"], 1), r"changes hands by ([\d.]+) pp \("),
-        check("H2 owner change: interval", iv(ck), r"changes hands by [\d.]+ pp \(([-.\d]+ to [-.\d]+); base"),
-        check("H2 owner change: base", pct(ck["base"]), r"changes hands by [\d.]+ pp \([-.\d]+ to [-.\d]+; base (\d+%)\)"),
-        check("insured share on return and owner change", f"{num(ri['e'], 1)} and {num(ci['e'], 1)}",
-              r"insured share: ([-.\d]+ and [-.\d]+)"),
-        check("tract income on return and owner change", f"{num(rl['e'], 1)} and {num(cl['e'], 1)}", r"income: ([-.\d]+ and [-.\d]+)\)"),
-        check("value regained per SD of K", num(fk["e"], 1), r"rises by ([\d.]+) pp per SD"),
-        check("NFIP policies on return", f"{num(rn['e'], 1)} pp on return ({iv(rn)})", r"give the same answer: ([\d.]+ pp on return \([-.\d]+ to [-.\d]+\))"),
-        check("NFIP policies on owner change", f"{num(cn['e'], 1)} on owner change ({iv(cn)})", r"and ([-.\d]+ on owner change \([-.\d]+ to [-.\d]+\))"),
-        check("NFIP claims on return", f"{num(rc['e'], 1)}, {iv(rc)}", r"does not \(([-.\d]+, [-.\d]+ to [-.\d]+)\)"),
-        check("hardest-hit tracts (D of 20 or more)", f"{num(rd20['e'], 1)}, {iv(rd20)}", r"the interaction vanishes \(([-.\d]+, [-.\d]+ to [-.\d]+)\)"),
-        check("business entities where capital is higher", f"{num(bus['e'], 1)} pp, {iv(bus)}", r"slightly more often \(([-.\d]+ pp, [-.\d]+ to [-.\d]+)\)"),
-        check("SFHA on return", f"{num(sA['e'], 1)} pp more often than outside it ({iv(sA)})",
-              r"return ([\d.]+ pp more often than outside it \([-.\d]+ to [-.\d]+\))"),
-        check("SFHA with NFIP penetration added", f"{pct(sB['absorbed'])} of the coefficient ({num(sA['e'], 1)} to {num(sB['e'], 1)})",
-              r"absorbs only (\d+% of the coefficient \([\d.]+ to [\d.]+\))"),
-        check("A zones on return", f"{num(az['e'], 1)} pp more ({iv(az)})", r"return ([\d.]+ pp more \([-.\d]+ to [-.\d]+\))"),
-        check("V zone on return", f"{num(-vz['e'], 1)} pp less ({iv(vz)})", r"return ([\d.]+ pp less \([-.\d]+ to [-.\d]+\))"),
+        check("H2: L25 × K on restoration under original ownership (pp)", num(rk["e"], 1),
+              r"a ([\d.]+)-pp higher probability of restoration under original ownership"),
+        check("the same, 95% CI", ci(rk), r"higher probability of restoration under original ownership \((95% CI \[[-.\d]+, [-.\d]+\])"),
+        check("H2: L25 × K on ownership change (pp)", num(-ck["e"], 1), r"a ([\d.]+)-pp lower probability of ownership change"),
+        check("the same, 95% CI", ci(ck), r"lower probability of ownership change \((95% CI \[[-.\d]+, [-.\d]+\])"),
+        check("L25 × K on capped R (pp)", num(fk["e"], 1), r"a ([\d.]+)-pp higher capped"),
+        check("the same, 95% CI", ci(fk), r"higher capped \*R\* \((95% CI \[[-.\d]+, [-.\d]+\])"),
+        check("NFIP penetration on restoration under original ownership (pp)", num(rn["e"], 1),
+              r"higher restoration under original ownership \(([\d.]+) pp;"),
+        check("the same, 95% CI", ci(rn), r"higher restoration under original ownership \([\d.]+ pp; (95% CI \[[-.\d]+, [-.\d]+\])"),
+        check("NFIP penetration on ownership change (pp)", num(cn["e"], 1), r"less frequent ownership change \(([-.\d]+) pp;"),
+        check("the same, 95% CI", ci(cn), r"less frequent ownership change \([-.\d]+ pp; (95% CI \[[-.\d]+, [-.\d]+\])"),
+        check("SFHA: L25 difference in restoration under original ownership (pp)", num(sA["e"], 1), r"was ([\d.]+) pp more favorable inside the SFHA"),
+        check("the same, 95% CI", ci(sA), r"than outside it \((95% CI \[[-.\d]+, [-.\d]+\])"),
+        check("SFHA adjusted for NFIP penetration (pp)", num(sB["e"], 1), r"and ([\d.]+) pp after adjusting for NFIP penetration"),
+        check("business ownership of L25 properties: L25 × K (pp)", num(bus["e"], 1), r"business ownership of L25 properties \(([-.\d]+) pp;"),
+        check("the same, 95% CI", ci(bus), r"business ownership of L25 properties \([-.\d]+ pp; (95% CI \[[-.\d]+, [-.\d]+\])"),
+        check("the same, outcome mean", pct(bus["base"], 1), r"against an outcome mean of ([\d.]+%)"),
     ]

@@ -5,8 +5,8 @@ modules; this script writes the HTML documents, js\pages.js and
 js\pages\<id>.js from it, so a tab is added or renamed here and nowhere
 else.
 
-The site is the companion to Paper 2, "Recovery without return: physical
-housing recovery and ownership continuity after disasters". It is
+The site is the companion to Paper 2, "Recovery without return: Housing
+restoration and ownership continuity after hurricanes". It is
 anonymous (no author, no affiliation) and does not name a journal.
 
 Usage:
@@ -18,46 +18,46 @@ from html import escape
 from pathlib import Path
 
 APP = Path(__file__).resolve().parent.parent
-VERSION = "1"
+VERSION = "2"
 TITLE = "Recovery without return"
-SUBTITLE = ("Physical housing recovery and ownership continuity after seven Florida hurricane "
+SUBTITLE = ("Housing restoration and ownership continuity after seven Florida hurricane "
             "seasons, 2016 to 2024")
-DESCRIPTION = ("Interactive companion to a study of whether the physical recovery of damaged homes also "
-               "means that their pre-disaster owners keep them, read on Florida's parcel records")
+DESCRIPTION = ("Interactive companion to a study of physical restoration and ownership continuity after "
+               "hurricanes, read on Florida's parcel records")
 
 PAGES = [
     {"id": "street", "file": "index.html", "tab": "Two clocks", "fn": "streetChart",
-     "title": "A damaged home recovers on two clocks: the structure and the owner",
+     "title": "Physical restoration and ownership continuity: two dimensions of recovery",
      "needs": ["street"],
-     "desc": "a hundred damaged homes followed through the four rolls after the storm"},
+     "desc": "a hundred homes with structural loss followed through the four rolls after the storm"},
     {"id": "clocks", "file": "clocks.html", "tab": "The gap", "fn": "clocksChart",
-     "title": "Restored, but under a new owner: the gap between the two clocks",
+     "title": "Restored, but under a new owner: restoration against ownership continuity",
      "needs": ["clocks"],
-     "desc": "the restored share against the share restored by the pre-storm owner, by structural loss, and the sale clock"},
+     "desc": "the restored share against the share restored under the original owner, by structural loss, and the sales"},
     {"id": "map", "file": "map.html", "tab": "Seven seasons", "fn": "mapChart",
      "title": "Where the storms struck, and where the restored homes changed hands",
      "needs": ["map", "geo"],
-     "desc": "the storm-struck tracts of seven hurricane seasons with the HURDAT2 tracks, and the two clocks by tract"},
+     "desc": "the affected tracts of seven hurricane seasons with the HURDAT2 tracks, and recovery by tract after Ian"},
     {"id": "loss", "file": "loss.html", "tab": "Structural loss", "fn": "lossChart",
      "title": "Structural loss: the greater the loss, the more often a restored home has a new owner",
      "needs": ["loss"],
-     "desc": "the five paths of a destroyed home and the H1 estimates with their checks"},
+     "desc": "the five recovery pathways of an L75 home and the H1 estimates across specifications"},
     {"id": "capital", "file": "capital.html", "tab": "Financial resources", "fn": "capitalChart",
-     "title": "Financial resources: where owners were insured and better off, the pre-storm owner stays",
+     "title": "Financial resources: where tracts were insured and better off, the original owner restores",
      "needs": ["capital"],
-     "desc": "the H2 surfaces over structural loss and incumbent capital, and every H2 estimate"},
+     "desc": "restoration and ownership change over structural loss and the financial resources index, and every H2 estimate"},
     {"id": "owners", "file": "owners.html", "tab": "Owner occupancy", "fn": "ownersChart",
-     "title": "Owner occupancy: residents restore most and clear least, absentee owners wait",
+     "title": "Owner occupancy: resident owner-occupants restore most and clear least",
      "needs": ["owners"],
-     "desc": "restoration by owner group on the rolls and in the Cape Coral permits, and absentee neighborhoods"},
+     "desc": "restoration by owner type on the rolls and in the Cape Coral permits, and the neighborhood-level extension"},
     {"id": "shore", "file": "shore.html", "tab": "The shore", "fn": "shoreChart",
-     "title": "The shore: where the storm does most, not where the clocks separate most",
+     "title": "The shore: where structural loss is greatest, not where ownership change among restored homes is",
      "needs": ["shore"],
-     "desc": "the two clocks by distance to the shoreline"},
+     "desc": "recovery states and the models by distance to the shoreline"},
     {"id": "data", "file": "data.html", "tab": "Data and methods", "fn": "dataPage",
-     "title": "Records, measures, models and the hypotheses",
+     "title": "Records, measures, models and hypotheses",
      "needs": ["data"],
-     "desc": "the records, the measures, the validation, the models and the status of every hypothesis"},
+     "desc": "the records, the measures, the validation, the models and the main estimate of every hypothesis"},
 ]
 
 FILES = {

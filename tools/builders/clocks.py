@@ -1,17 +1,16 @@
-r"""The gap page: the two clocks read together by structural loss
-(Figure 4; Table 2 and its continuation; Figure S13 for the seven
-states), season by season, and the sale clock.
+r"""The gap page: restoration and ownership continuity read together by
+structural loss (Figure 4 and Table 2 of the paper; Figure S5 for the
+eight states), season by season, and the sales (Table 3).
 
 Reads a18 taxonomy_by_loss.csv, rwr_share.csv, taxonomy_by_season.csv,
 season_totals.csv; a15 d2_sale_clock.csv, d2_buyers.csv, d2_prices.csv.
 """
 
-from .common import check, months, pct, rd, storms
+from .common import check, check_groups, months, pct, rd, storms
 from .street import STATES, cells, rwr, rwr_table, taxonomy
 
-LOSS = [(".25-.50", "Lost .25 to .50"), (".50-.75", "Lost .50 to .75"), (">=.75", "Lost .75 or more")]
-SALE = [("<.10", "Undamaged (lost under .10)"), (".25-.50", "Lost .25 to .50"), (".50-.75", "Lost .50 to .75"),
-        (">=.75", "Lost .75 or more")]
+LOSS = [(".25-.50", "25% ≤ L <50%"), (".50-.75", "50% ≤ L <75%"), (">=.75", "L ≥75%")]
+SALE = [("<.10", "Unaffected (L <10%)"), (".25-.50", "25% ≤ L <50%"), (".50-.75", "50% ≤ L <75%"), (">=.75", "L ≥75%")]
 
 
 def by_season():
@@ -76,13 +75,17 @@ def checks(files):
     sale = {s["key"]: s for s in c["sales"]}
     at12 = {k: next(r for r in v["clock"] if r["m"] == 12)["share"] for k, v in sale.items()}
     return [
-        check("RWR at 39 months, lost .75 or more: restored then sold", pct(st["recovery without return: restored then sold"][0]),
-              r"\((\d+%) against \d+% of destroyed homes at 39 months\)"),
-        check("RWR at 39 months, lost .75 or more: sold then restored", pct(st["recovery without return: sold then restored"][0]),
-              r"\(\d+% against (\d+%) of destroyed homes at 39 months\)"),
-        check("sold for value within 12 months, lost .75 or more", pct(at12[">=.75"]),
-              r"within a year of landfall, (\d+%) of destroyed resident homes are sold"),
-        check("sold for value within 12 months, undamaged", pct(at12["<.10"]), r"sold for value against (\d+%) of undamaged"),
-        check("median sale price over pre-storm just value, lost .75 or more", pct(sale[">=.75"]["price_over_jv"]),
-              r"at a median (\d+%) of the pre-storm just value"),
+        check_groups("L75, 39 months: sold before restoration, sold after restoration, new owner without a recorded sale",
+                     ", ".join(pct(st[k][0]) for k in ("recovery without return: sold then restored",
+                                                       "recovery without return: restored then sold",
+                                                       "recovery without return: owner change, no sale")),
+                     r"(\d+%) had been sold before restoration and (\d+%) were sold after restoration by 39 months, "
+                     r"while a further (\d+%) changed owners without a recorded sale"),
+        check_groups("sold for value within 12 months: L75, unaffected", f"{pct(at12['>=.75'], 1)}, {pct(at12['<.10'], 1)}",
+                     r"Within 12 months of landfall, ([\d.]+%) of L75 homes had been sold, compared with ([\d.]+%) of unaffected homes"),
+        check_groups("business buyers within 24 months: L75, unaffected",
+                     f"{pct(sale['>=.75']['buyers']['business'])}, {pct(sale['<.10']['buyers']['business'])}",
+                     r"accounted for (\d+%) of buyers of L75 properties sold within 24 months, compared with (\d+%) for unaffected"),
+        check("median sale price of L75 homes, % of pre-storm just value", pct(sale[">=.75"]["price_over_jv"]),
+              r"median sale price of these homes was (\d+%) of the pre-storm just value"),
     ]

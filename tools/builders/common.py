@@ -173,3 +173,10 @@ def check(label, site, pattern, group=1):
     m = re.search(pattern, draft())
     paper = m.group(group) if m else None
     return {"label": label, "site": site, "paper": paper, "ok": paper is not None and paper == site}
+
+
+def check_groups(label, site, pattern, sep=", "):
+    """As check(), with every capture group of the pattern joined by `sep`."""
+    m = re.search(pattern, draft())
+    paper = sep.join(m.groups()) if m else None
+    return {"label": label, "site": site, "paper": paper, "ok": paper is not None and paper == site}

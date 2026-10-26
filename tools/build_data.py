@@ -23,6 +23,8 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")      # the checks print the paper's symbols
 sys.path.insert(0, str(HERE))
 
 from builders.common import DATA, dump, months  # noqa: E402

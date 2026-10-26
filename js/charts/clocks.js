@@ -1,10 +1,10 @@
-/* The gap page (Figure 4; Table 2 and its continuation; Figure S13).
-   Three panels, one per structural loss bin: the share of damaged
-   resident-owned homes restored (the structure clock), the share restored
-   and still held by the pre-storm owner (the two clocks together), the
-   pink band between them (recovery without return) and the cleared lot.
-   Below: the seven states of the hovered roll as one bar, the sale clock,
-   and the two clocks season by season.
+/* The gap page (Figure 4, Tables 2 and 3, Figure S5). Three panels, one
+   per structural loss category: the share of L25 resident owner-occupied
+   homes restored, the share restored under the original owner, the pink
+   band between them (restoration under new ownership, recovery without
+   return) and the cleared lot. Below: the eight states of Table 2 for the
+   hovered roll as one bar, the sales of Table 3, and the two shares season
+   by season.
 
    Data: data/clocks.json. */
 
@@ -17,15 +17,17 @@ import { tour } from "../lib/tour.js";
 import { howto, pick, finding } from "../lib/read.js";
 
 const SAME = ["recovery with return", "restored, same owner, no homestead"];
-const NEW = ["recovery without return: restored then sold", "recovery without return: sold then restored"];
+const NEW = ["recovery without return: restored then sold", "recovery without return: sold then restored",
+  "recovery without return: owner change, no sale"];
 const STATE_STYLE = {
-  "recovery with return": { fill: "#9cc3a9", label: "recovery with return" },
-  "restored, same owner, no homestead": { fill: "#cfe2d4", label: "restored, same owner, no homestead" },
-  "recovery without return: restored then sold": { fill: "#c9668b", label: "RWR: restored, then sold" },
-  "recovery without return: sold then restored": { fill: "#e4aac0", label: "RWR: sold, then restored" },
-  "stranded incumbent": { fill: "#d6d6d6", label: "stranded incumbent" },
-  "unresolved transition": { fill: "#ffffff", label: "unresolved transition" },
-  cleared: { fill: "#8c8c8c", label: "cleared lot" },
+  "recovery with return": { fill: "#9cc3a9", label: "Restored, original owner with homestead" },
+  "restored, same owner, no homestead": { fill: "#cfe2d4", label: "Restored, original owner without homestead" },
+  "recovery without return: sold then restored": { fill: "#c9668b", label: "Restored, new owner: sold before restoration" },
+  "recovery without return: restored then sold": { fill: "#e4aac0", label: "Restored, new owner: sold after restoration" },
+  "recovery without return: owner change, no sale": { fill: "#d98bab", label: "Restored, new owner: no recorded sale" },
+  "stranded incumbent": { fill: "#d6d6d6", label: "Unrestored, original owner" },
+  "unresolved transition": { fill: "#ffffff", label: "Unrestored, new owner" },
+  cleared: { fill: "#8c8c8c", label: "Cleared lot" },
 };
 const SALE_COLOR = { "<.10": GRAY, ".25-.50": "#d49ab0", ".50-.75": "#bd5f84", ">=.75": PINK };
 
@@ -55,7 +57,7 @@ export function clocksChart(host, app) {
       const st = cells[k].states;
       return { k, m: months[k], same: sum(st, SAME), rest: sum(st, SAME) + sum(st, NEW), cl: st.cleared[0], n: cells[k].n };
     });
-    const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `${b.label}: the two clocks` });
+    const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `${b.label}: restoration and ownership continuity` });
     for (const v of [0, 0.2, 0.4, 0.6]) {
       root.append(svg("line", { x1: m.left, x2: W - m.right, y1: y(v), y2: y(v), stroke: v === 0 ? RULE : GRID }),
         svg("text", { x: m.left - 6, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: MUTED, text: v === 0 ? "0" : fmt.tickPct(v) }));
@@ -110,7 +112,7 @@ export function clocksChart(host, app) {
     const bx = x(best.mm);
     const halo = { stroke: "#fff", "stroke-width": 3, "stroke-linejoin": "round", "paint-order": "stroke" };
     root.append(svg("text", { class: "s-band", x: bx, y: bandY - 2, "text-anchor": "middle", "font-size": 11, fill: INK, ...halo, text: "new owner" }),
-      svg("text", { class: "s-band", x: bx, y: bandY + 11, "text-anchor": "middle", "font-size": 12, "font-weight": 700, fill: INK, ...halo, text: `${fmt.num(r4.share)}${fmt.stars(r4.p)}` }));
+      svg("text", { class: "s-band", x: bx, y: bandY + 11, "text-anchor": "middle", "font-size": 12, "font-weight": 700, fill: INK, ...halo, text: `${fmt.pct(r4.share)}${fmt.stars(r4.p)}` }));
     /* hover strips, one per roll */
     const guide = svg("line", { y1: m.top - 6, y2: H - m.bottom, stroke: INK, "stroke-width": 0.8, opacity: 0 });
     root.append(guide);
@@ -129,24 +131,24 @@ export function clocksChart(host, app) {
   }
   const legend = el("div.legend", {}, [
     el("span.item", {}, [el("i.swatch", { style: { background: PINK } }), "restored"]),
-    el("span.item", {}, [el("i.swatch", { style: { background: GREEN } }), "restored by the pre-storm owner"]),
-    el("span.item", {}, [el("i.sq", { style: { background: PALE.pink } }), "recovery without return"]),
+    el("span.item", {}, [el("i.swatch", { style: { background: GREEN } }), "restored, original owner"]),
+    el("span.item", {}, [el("i.sq", { style: { background: PALE.pink } }), "restored, new owner (recovery without return)"]),
     el("span.item", { style: { color: GRAY_DARK } }, [el("i.swatch.dash", { style: { color: GRAY_DARK } }), "cleared lot"]),
-    el("span.item.note", {}, ["new owner: share of restored homes under a new owner at 39 months; * p < .05 ** p < .01 *** p < .001 against lost .25 to .50"]),
+    el("span.item.note", {}, ["new owner: share of restored homes under a new owner at 39 months; * p < .05 ** p < .01 *** p < .001 against 25% ≤ L <50%"]),
   ]);
   panels.after(legend);
 
   function showTip(ev, b, k) {
     const st = C.cells[b.key][k].states;
-    const rows = [["restored", fmt.pct(sum(st, SAME) + sum(st, NEW))], ["by the pre-storm owner", fmt.pct(sum(st, SAME))],
-      ["under a new owner", fmt.pct(sum(st, NEW))], ["not restored", fmt.pct(st["stranded incumbent"][0] + st["unresolved transition"][0])],
+    const rows = [["restored", fmt.pct(sum(st, SAME) + sum(st, NEW))], ["restored, original owner", fmt.pct(sum(st, SAME))],
+      ["restored, new owner", fmt.pct(sum(st, NEW))], ["unrestored", fmt.pct(st["stranded incumbent"][0] + st["unresolved transition"][0])],
       ["cleared lot", fmt.pct(st.cleared[0])]];
     const r = C.rwr[b.key][k];
-    if (r && r.restored) rows.push(["new owner among restored", `${fmt.num(r.share)} ${fmt.ci(r.lo, r.hi, 2)}`]);
-    tip.show(ev, { title: `${b.label}, ${fmt.mo(months[k])} months`, rows, note: `${fmt.count(C.cells[b.key][k].n)} damaged resident-owned homes on the roll.` });
+    if (r && r.restored) rows.push(["new owner among restored", `${fmt.pct(r.share)} ${fmt.ci(100 * r.lo, 100 * r.hi, 0)}`]);
+    tip.show(ev, { title: `${b.label}, ${fmt.mo(months[k])} months`, rows, note: `${fmt.count(C.cells[b.key][k].n)} resident owner-occupied homes on the roll.` });
   }
 
-  /* ---- the seven states of one roll, as one bar */
+  /* ---- the eight states of Table 2 for one roll, as one bar */
   function paintReading() {
     const b = C.bins.find((v) => v.key === state.bin);
     const st = C.cells[state.bin][state.k].states;
@@ -161,13 +163,13 @@ export function clocksChart(host, app) {
     const key = el("div.legend", {}, segs.map((s) => el("span.item", {}, [el("i.sq", { style: { background: s.fill } }), `${s.label} ${fmt.pct(s.v)}`])));
     const r = C.rwr[state.bin][state.k];
     clear(reading).append(
-      el("p.reading-head", { html: `<b>${b.label}, ${fmt.mo(months[state.k])} months after landfall</b>: the seven states of the damaged homes` + (r && r.restored ? `; under a new owner among restored <b>${fmt.num(r.share)}</b> ${fmt.ci(r.lo, r.hi, 2)}${fmt.stars(r.p)}` : "") },),
+      el("p.reading-head", { html: `<b>${b.label}, ${fmt.mo(months[state.k])} months after landfall</b>: the eight states of Table 2` + (r && r.restored ? `; new owner among restored homes <b>${fmt.pct(r.share)}</b> ${fmt.ci(100 * r.lo, 100 * r.hi, 0)}${fmt.stars(r.p)}` : "") },),
       bar, key);
   }
   paintReading();
 
   /* ---- the sale clock */
-  host.append(el("h3.rule", { text: "The sale clock: who sells, to whom, at what price" }),
+  host.append(el("h3.rule", { text: "Sales for value: who sells, to whom, at what price (Table 3)" }),
     el("p.sub", { text: "Resident owner-occupied homes sold for value within months of landfall, by structural loss, seasons 2016 to 2024 (sales through December 2024)." }));
   const saleGrid = el("div.panelgrid");
   host.append(saleGrid);
@@ -198,7 +200,7 @@ export function clocksChart(host, app) {
         root.append(dot);
       }
       const last = s.clock[s.clock.length - 1];
-      labels.push({ y: sy(last.share), text: `${s.label.replace("Undamaged (lost under .10)", "undamaged").replace("Lost ", "lost ")} ${fmt.pct(last.share)}`, col });
+      labels.push({ y: sy(last.share), text: `${s.label.replace("Unaffected (L <10%)", "unaffected")} ${fmt.pct(last.share)}`, col });
     }
     labels.sort((a, b) => a.y - b.y);
     let py = -Infinity;
@@ -219,7 +221,7 @@ export function clocksChart(host, app) {
       for (const s of C.sales) {
         const v = f(s);
         box.append(el("div.minibar", {}, [
-          el("span.k", { text: s.label.replace("Undamaged (lost under .10)", "undamaged") }),
+          el("span.k", { text: s.label.replace("Unaffected (L <10%)", "unaffected") }),
           el("span.t", {}, [el("i", { style: { width: `${(v / max) * 100}%`, background: SALE_COLOR[s.key] === GRAY ? "#d9d9d9" : mix(SALE_COLOR[s.key], "#ffffff", 0.55) } })]),
           el("b", { text: fmt.pct(v) }),
         ]));
@@ -227,14 +229,14 @@ export function clocksChart(host, app) {
       if (note) box.append(el("p.what", { text: note }));
       return box;
     };
-    side.append(bars("Business buyer, sales within 24 months", (s) => s.buyers.business || 0),
-      bars("Median sale price over the pre-storm just value", (s) => s.price_over_jv, "A deed for value is a recorded sale at a price of at least 10% of the pre-storm just value."));
+    side.append(bars("Business buyers, % of sales within 24 months", (s) => s.buyers.business || 0),
+      bars("Median sale price, % of pre-storm just value", (s) => s.price_over_jv, "A sale for value is a deed with a price of at least 10% of the pre-storm just value, recorded from landfall through the third calendar year after the storm."));
     saleGrid.append(side);
   }
 
   /* ---- season by season */
   host.append(el("h3.rule", { text: "Season by season" }),
-    el("p.sub", { text: "Damaged resident-owned homes of each season, every loss bin: restored, and restored by the pre-storm owner, on the rolls each season has reached." }));
+    el("p.sub", { text: "L25 resident owner-occupied homes of each season: restored, and restored under the original owner, on the rolls each season has reached." }));
   const grid = el("div.seasons");
   host.append(grid);
   for (const s of C.seasons) {
@@ -257,14 +259,14 @@ export function clocksChart(host, app) {
       svg("path", { d: line((p) => p.cl), fill: "none", stroke: GRAY_DARK, "stroke-width": 1.2, "stroke-dasharray": "4 2" }));
     const last = pts[pts.length - 1];
     root.append(svg("text", { x: sx(last.m) + 5, y: sy(last.rest) + 4, "font-size": 10, "font-weight": 600, fill: PINK, text: fmt.pct(last.rest) }));
-    const note = s.rwr_3 !== null ? `new owner among restored at 27 months ${fmt.num(s.rwr_3)}` : `${fmt.mo(last.m)} months so far`;
+    const note = s.rwr_3 !== null ? `new owner among restored homes at 27 months ${fmt.pct(s.rwr_3)}` : `${fmt.mo(last.m)} months so far`;
     const card = el("div.season", {}, [
       el("b", { text: `${s.storms.join(" · ")} ${s.season}` }),
-      el("span.meta", { text: `${fmt.count(s.n_damaged)} damaged homes · ${fmt.pct(s.destroyed)} lost half or more` }),
+      el("span.meta", { text: `${fmt.count(s.n_damaged)} L25 homes · ${fmt.pct(s.destroyed)} L50` }),
       root,
       el("span.meta", { text: note }),
     ]);
-    root.addEventListener("pointerenter", (ev) => tip.show(ev, { title: `${s.storms.join(", ")} ${s.season}`, rows: pts.map((p) => [`${fmt.mo(p.m)} months`, `restored ${fmt.pct(p.rest)} · pre-storm owner ${fmt.pct(p.same)}`]) }));
+    root.addEventListener("pointerenter", (ev) => tip.show(ev, { title: `${s.storms.join(", ")} ${s.season}`, rows: pts.map((p) => [`${fmt.mo(p.m)} months`, `restored ${fmt.pct(p.rest)} · original owner ${fmt.pct(p.same)}`]) }));
     root.addEventListener("pointermove", tip.move);
     root.addEventListener("pointerleave", tip.hide);
     grid.append(card);
@@ -272,16 +274,16 @@ export function clocksChart(host, app) {
 
   howto(host, {
     lines: [
-      "Damaged resident owner-occupied homes of the storm-struck tracts, held since two rolls before the storm, in the seasons that reach the fourth roll (2016 to 2021). Shares of the homes present on each roll.",
-      "The pink line is the structure clock (restored: structure value back to 90% of its pre-storm level after the county trend); the green line is the same homes restored and still held by the pre-storm owner. The pink band between them is recovery without return.",
-      "Hover a roll for every state with its share; the bar below the panels splits the hovered roll into the seven states of the paper's Table 2.",
+      "L25 resident owner-occupied homes of affected tracts, under the same owner for at least two rolls before the storm, in the seasons that reach the fourth roll (2016 to 2021). Shares of the homes present on each roll.",
+      "The pink line is the restored share (structural value ratio R ≥90% after the countywide reassessment trend); the green line is restoration under original ownership. The pink band between them is restoration under new ownership, recovery without return.",
+      "Hover a roll for every state with its share; the bar below the panels splits the hovered roll into the eight states of Table 2.",
     ],
-    terms: pick("clocks", "rwr", "ret", "stranded", "unresolved", "cleared", "restored", "loss", "rolls"),
+    terms: pick("clocks", "ret", "rwr", "stranded", "unresolved", "cleared", "restored", "loss", "rolls"),
   });
 
   const r25 = C.rwr[".25-.50"][4];
   const r75 = C.rwr[">=.75"][4];
-  finding(`The two clocks separate as the loss grows: 39 months after landfall, <span class="rwr">${fmt.num(r25.share)}</span> of the restored homes are under a new owner where the loss was a quarter to a half, and <span class="rwr">${fmt.num(r75.share)}</span> where it was three quarters or more.`);
+  finding(`Restoration and ownership continuity diverge as structural loss grows: 39 months after landfall, <span class="rwr">${fmt.pct(r25.share)}</span> of the restored homes are under a new owner where the loss was 25% to under 50%, and <span class="rwr">${fmt.pct(r75.share)}</span> where it was 75% or more.`);
 
   /* ---- the tour */
   const focus = (cls, bin = null) => {
@@ -296,13 +298,13 @@ export function clocksChart(host, app) {
   tour({
     name: "the gap",
     steps: [
-      { cap: "The pink line is the structure clock: the share of damaged homes restored.", ms: 3200, run: () => focus("s-rest") },
-      { cap: "The green line reads both clocks: restored and still held by the pre-storm owner.", ms: 3200, run: () => focus("s-same") },
-      { cap: "The pink band between them is recovery without return; it widens with the loss.", ms: 3600, run: () => focus("s-band") },
-      { cap: `Where the loss was three quarters or more, ${fmt.pct(st75[1].states.cleared[0])} of lots stood cleared on the first roll and ${fmt.pct(st75[4].states.cleared[0])} still do at 39 months.`, ms: 4200, run: () => focus("s-cl", ">=.75") },
-      { cap: `Within the band, most owners restore first and sell after: ${fmt.pct(st75[4].states[NEW[0]][0])} against ${fmt.pct(st75[4].states[NEW[1]][0])} who sold the wreck.`, ms: 4400, run: () => { focus(null); state.bin = ">=.75"; state.k = 4; paintReading(); } },
+      { cap: "The pink line is the restored share of L25 resident owner-occupied homes.", ms: 3200, run: () => focus("s-rest") },
+      { cap: "The green line is restoration under original ownership: restored, no ownership change, homestead retained.", ms: 3200, run: () => focus("s-same") },
+      { cap: "The pink band between them is restoration under new ownership, recovery without return; it widens with structural loss.", ms: 3600, run: () => focus("s-band") },
+      { cap: `Among L75 homes, ${fmt.pct(st75[1].states.cleared[0])} of lots were cleared on the first post-storm roll and ${fmt.pct(st75[4].states.cleared[0])} still are at 39 months.`, ms: 4200, run: () => focus("s-cl", ">=.75") },
+      { cap: `Within the band at 39 months, ${fmt.pct(st75[4].states[NEW[1]][0])} were sold before restoration, ${fmt.pct(st75[4].states[NEW[0]][0])} after it, and ${fmt.pct(st75[4].states[NEW[2]][0])} changed owners without a recorded sale.`, ms: 4400, run: () => { focus(null); state.bin = ">=.75"; state.k = 4; paintReading(); } },
     ],
     after: () => {},
     rest: () => { focus(null); state.bin = ">=.75"; state.k = 4; paintReading(); },
-  }).attach(tourHost);
+  }).attach(tourHost, { figure: [panels, saleGrid] });
 }

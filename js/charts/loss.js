@@ -1,11 +1,10 @@
 /* The Structural loss page (H1). Figure 3 as an interactive street: the
-   five paths of a resident-owned home that lost three quarters or more of
-   its structure, one row per path, one lot per roll. The height of each
-   house is the mean fraction of the pre-storm structure value the homes on
-   that path had regained (a full roof from .90, a tarp between .25 and .90,
-   a stub below, a cleared lot when most lots are cleared); the roof is the
-   owner the majority had on that roll. Then every H1 estimate with its
-   checks (Table 3) and what the new owners build.
+   five recovery pathways of a resident owner-occupied L75 home, one row
+   per pathway, one lot per roll. The height of each house is the mean
+   capped R of the homes on that pathway (a full roof from 90%, a tarp
+   between 25% and 90%, a stub below, a cleared lot when most lots are
+   cleared); the roof is the owner the majority had on that roll. Then
+   every estimate of Table 4, the main and the alternative specifications.
 
    Data: data/loss.json. */
 
@@ -38,18 +37,18 @@ export function lossChart(host, app) {
   const months = D.months;
   const state = { label: "F", lit: null };
 
-  const labelSeg = segmented([{ key: "F", label: "Value regained" }, { key: "changed", label: "New owner" }, { key: "cleared", label: "Cleared lot" }],
+  const labelSeg = segmented([{ key: "F", label: "Capped R" }, { key: "changed", label: "New owner" }, { key: "cleared", label: "Cleared lot" }],
     state.label, (k) => { state.label = k; paintLabels(); });
   const controls = el("div.controls", {}, [el("div.control", {}, [el("span.label", { text: "Number under each lot" }), labelSeg])]);
 
   /* ---- the street of paths */
   const W = LABEL_W + 5 * COL + SHARE_W;
   const H = TOP + D.paths.length * ROW + 10;
-  const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "The five paths of a destroyed home" });
+  const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "The five recovery pathways of L75 homes" });
   const heads = ["before the storm", ...[1, 2, 3, 4].map((k) => `${fmt.mo(months[k])} months`)];
   heads.forEach((h, c) => root.append(svg("text", { x: LABEL_W + c * COL + COL / 2, y: 20, "text-anchor": "middle", "font-size": 14, "font-weight": 600, text: h })));
   root.append(svg("text", { x: W - 6, y: 20, "text-anchor": "end", "font-size": 14, "font-weight": 600, text: "share" }),
-    svg("text", { x: W - 6, y: 37, "text-anchor": "end", "font-size": 12, fill: MUTED, text: "of destroyed homes" }),
+    svg("text", { x: W - 6, y: 37, "text-anchor": "end", "font-size": 12, fill: MUTED, text: "of L75 homes" }),
     svg("text", { x: LABEL_W + 3 * COL, y: 37, "text-anchor": "middle", "font-size": 12, fill: MUTED, text: "after landfall" }));
   const rowsG = [];
   const valueTexts = [];
@@ -83,10 +82,10 @@ export function lossChart(host, app) {
   });
   const h = D.headline;
   const legend = el("div.legend", {}, [
-    el("span.item", {}, [el("i.sq", { style: { background: GREEN } }), "pre-storm owner"]),
+    el("span.item", {}, [el("i.sq", { style: { background: GREEN } }), "original owner"]),
     el("span.item", {}, [el("i.sq", { style: { background: PINK } }), "new owner"]),
-    el("span.item.note", {}, ["height: value regained; stars: against the path above; * p < .05 ** p < .01 *** p < .001"]),
-    el("span.item.note", {}, [`† restored homes under a new owner: ${fmt.num(h.rwr)} against ${fmt.num(h.ref)} where the loss was .25 to .50${fmt.stars(h.p)}`]),
+    el("span.item.note", {}, ["height: capped R; stars: against the pathway above; * p < .05 ** p < .01 *** p < .001"]),
+    el("span.item.note", {}, [`† new owner among restored homes: ${fmt.pct(h.rwr)} against ${fmt.pct(h.ref)} where the loss was 25% to under 50%${fmt.stars(h.p)}`]),
   ]);
   const figure = el("div.figure", {}, [el("div.scrollx", {}, [root]), legend]);
 
@@ -106,26 +105,26 @@ export function lossChart(host, app) {
   }
   function hover(ev, p, c) {
     if (c === 0) {
-      tip.show(ev, { title: `${p.label}: before the storm`, rows: [["owner", "the pre-storm owner, held two rolls or more"]] });
+      tip.show(ev, { title: `${p.label}: before the storm`, rows: [["owner", "the original owner, recorded for at least two rolls"]] });
       return;
     }
     const r = p.rolls[c - 1];
-    const rows = [["value regained", `${fmt.num(r.F)} ${fmt.ci(r.lo, r.hi, 2)}`], ["under a new owner", fmt.pct(r.changed)], ["cleared lot", fmt.pct(r.cleared)]];
-    if (r.p !== null && r.p !== undefined) rows.push(["against the path above", fmt.pval(r.p)]);
+    const rows = [["capped R", `${fmt.pct(r.F)} ${fmt.ci(100 * r.lo, 100 * r.hi, 0)}`], ["under a new owner", fmt.pct(r.changed)], ["cleared lot", fmt.pct(r.cleared)]];
+    if (r.p !== null && r.p !== undefined) rows.push(["against the pathway above", fmt.pval(r.p)]);
     tip.show(ev, { title: `${p.label}, ${fmt.mo(months[r.k])} months`, rows, note: p.def });
   }
   paintLabels();
 
   /* ---- the reading: H1 */
-  const main = D.estimates.find((e) => e.group === "owner" && e.status === "pre-specified");
+  const main = D.estimates.find((e) => e.group === "owner" && e.main);
   const side = el("aside.sidecard", {}, [
-    el("h4", { text: "H1: severe loss separates the clocks" }),
-    el("p.what", { text: "Among restored resident homes, the chance of a new owner when the house lost half or more of its structure, against a quarter to a half, by s+3 (the third roll after the storm, about 27 months):" }),
+    el("h4", { text: "H1: structural loss and ownership change" }),
+    el("p.what", { text: "Among restored L25 resident owner-occupied homes, the probability of ownership change for L50 against 25% ≤ L <50%, at t + 3 (about 27 months), Eq. (1):" }),
     el("div.bignum", { html: `${fmt.num(main.e, 1)}<small>pp ${fmt.ci(main.lo, main.hi)}${fmt.stars(main.p)}</small>` }),
-    el("p.what", { text: `On a base of ${fmt.pct(main.base)}; ${fmt.count(main.n)} restored homes, tract-by-season fixed effects, standard errors clustered by county. Pre-specified, passed.` }),
+    el("p.what", { text: `Sample mean ${fmt.pct(main.base)}; ${fmt.count(main.n)} restored homes; census-tract-by-season fixed effects, standard errors clustered by county.` }),
     el("dl", {}, [
-      el("dt", { text: "restored homes under a new owner, loss .75 or more" }), el("dd", { text: `${fmt.num(h.rwr)} ${fmt.ci(h.lo, h.hi, 2)}` }),
-      el("dt", { text: "the same, loss .25 to .50" }), el("dd", { text: fmt.num(h.ref) }),
+      el("dt", { text: "new owner among restored L75 homes, 39 months" }), el("dd", { text: `${fmt.pct(h.rwr)} ${fmt.ci(100 * h.lo, 100 * h.hi, 0)}` }),
+      el("dt", { text: "the same, 25% ≤ L <50%" }), el("dd", { text: fmt.pct(h.ref) }),
     ]),
   ]);
 
@@ -133,56 +132,56 @@ export function lossChart(host, app) {
   clear(host).append(tourHost, controls, el("div.panelgrid", {}, [figure, side]));
 
   /* ---- the estimates */
-  host.append(el("h3.rule", { text: "H1 and its checks" }),
-    el("p.sub", { text: "A new owner among restored resident homes, loss .50 or more against .25 to .50, in percentage points. Every check keeps the sign; the thresholds move the restoration line." }));
+  host.append(el("h3.rule", { text: "H1 across specifications (Table 4)" }),
+    el("p.sub", { text: "Ownership change among restored L25 resident owner-occupied homes, L50 against 25% ≤ L <50%, in percentage points: the main specification and the alternative specifications of Section 4.5." }));
   const fh = el("div");
   host.append(fh);
-  forest(fh, D.estimates.filter((e) => e.group === "owner").map((e, i) => ({ ...e, key: i === 0 })), { unit: "pp", d: 1, axis: "percentage points; the line marks no difference" });
+  forest(fh, D.estimates.filter((e) => e.group === "owner"), { unit: "pp", d: 1, axis: "percentage points; the line marks no difference" });
   host.append(forestKey());
 
-  host.append(el("h3.rule", { text: "What the new owners build" }),
-    el("p.sub", { text: "Separation is not a faster recovery. Value regained by s+3 (about 27 months), damaged resident homes present on that roll, in percentage points; then the floor area of rebuilt houses and the assessment-cap terms." }));
+  host.append(el("h3.rule", { text: "Capped R and rebuilding (Table 4)" }),
+    el("p.sub", { text: "Ownership change was not associated with greater physical recovery. Capped R at t + 3 (about 27 months) among L25 resident owner-occupied homes, in percentage points; then the floor area of L75 homes rebuilt by 39 months and the assessment-cap size limits." }));
   const grid = el("div.panelgrid");
   const fv = el("div");
-  forest(fv, D.estimates.filter((e) => e.group === "value" || e.group === "area").map((e) => ({ ...e, label: e.group === "area" ? "rebuilt floor area, new vs pre-storm owner (%)" : `value regained: ${e.label}` })),
-    { unit: "", d: 1, axis: "percentage points (floor area: percent)" });
-  const capBox = el("aside.sidecard", {}, [el("h4", { text: "Within the assessment-cap terms" }),
-    el("p.what", { text: "Rebuilt within 110% of the former floor area or 1,500 square feet, the terms in force through the 2025 roll:" })]);
+  forest(fv, D.estimates.filter((e) => e.group === "value" || e.group === "area").map((e) => ({ ...e, label: e.group === "area" ? e.label : `capped R: ${e.label}` })),
+    { unit: "", d: 1, axis: "percentage points (floor area: log points, about percent)" });
+  const capBox = el("aside.sidecard", {}, [el("h4", { text: "Within the assessment-cap size limits" }),
+    el("p.what", { text: "L75 homes rebuilt by 39 months with a living area of at most 110% of the former area or 1,500 square feet, whichever is larger:" })]);
   for (const c of D.cap) {
-    capBox.append(el("div.minibar", {}, [el("span.k", { text: c.owner }),
+    capBox.append(el("div.minibar", {}, [el("span.k", { text: c.owner.replace("pre-storm owner", "original owner") }),
       el("span.t", {}, [el("i", { style: { width: `${c.within * 100}%`, background: c.owner === "new owner" ? "#e4aac0" : "#9cc3a9" } })]),
       el("b", { text: fmt.pct(c.within) })]));
   }
-  capBox.append(el("p.what", { text: `Median rebuilt area over the former area: ${D.cap.map((c) => `${c.owner} ${fmt.num(c.area_ratio, 2)}`).join("; ")}. The terms bind neither.` }));
+  capBox.append(el("p.what", { text: `Median ratio of rebuilt to pre-storm living area: ${D.cap.map((c) => `${c.owner.replace("pre-storm owner", "original owner")} ${fmt.num(c.area_ratio, 2)}`).join("; ")}.` }));
   grid.append(fv, capBox);
   host.append(grid);
 
   howto(host, {
     lines: [
-      "The street follows the resident-owned homes of the storm-struck tracts that lost three quarters or more of their structure (seasons 2016 to 2021), grouped by their state on the fourth roll: five paths, each a row.",
-      "A house's height is the mean fraction of pre-storm structure value regained on that path and roll; its roof is the owner most of those homes had. Switch the number under each lot between value regained, the share under a new owner and the share cleared.",
-      "The estimates are linear probability models with tract-by-season fixed effects; a filled marker is the pre-specified test, an open one a check of it.",
+      "The street follows the resident owner-occupied homes of affected tracts with structural loss of at least 75% (seasons 2016 to 2021), grouped by their state on the fourth post-storm roll: five recovery pathways, each a row (Figure 3).",
+      "A house's height is the mean capped R on that pathway and roll; its roof is the owner most of those homes had. Switch the number under each lot between capped R, the share under a new owner and the share cleared.",
+      "The estimates are linear probability models with census-tract-by-season fixed effects (Eq. 1); a filled marker is the main specification, an open one an alternative specification.",
     ],
-    terms: pick("rwr", "ret", "stranded", "unresolved", "cleared", "loss", "pp", "ci", "prespec"),
+    terms: pick("ret", "rwr", "stranded", "unresolved", "cleared", "loss", "capped", "pp", "ci", "spec"),
   });
 
   const val = (lab) => D.estimates.find((e) => e.label === lab);
-  const gx = val("loss .50 or more × owner changed");
-  finding(`Among restored resident homes, a new owner is <b>${fmt.num(main.e, 1)} pp</b> more likely when the house lost half or more of its structure ${fmt.ci(main.lo, main.hi)}, on a base of ${fmt.pct(main.base)}; and a destroyed house that changed hands has regained ${fmt.num(-gx.e, 1)} pp less of its value. The house comes back, often to someone else, and more slowly.`);
+  const gx = val("L50 × OC at t + 3");
+  finding(`Among restored L25 resident owner-occupied homes, L50 raises the probability of ownership change by <b>${fmt.num(main.e, 1)} pp</b> ${fmt.ci(main.lo, main.hi)}, relative to a sample mean of ${fmt.pct(main.base)}; and an L50 home under a new owner has a capped R ${fmt.num(-gx.e, 1)} pp lower. Greater structural loss means more ownership change, not greater physical recovery.`);
 
   const ret = D.paths[0];
   const rwr = D.paths[1];
   tour({
     name: "structural loss",
     steps: [
-      { cap: "Each row is one path of a home that lost three quarters or more of its structure; each lot one roll after the storm.", ms: 3800, run: () => light(null) },
-      { cap: `Recovery with return: ${fmt.pct(ret.share)} of these homes, restored by the owner who held them before the storm.`, ms: 3400, run: () => light(0) },
-      { cap: `Recovery without return: ${fmt.pct(rwr.share)}, restored under a new owner.`, ms: 3400, run: () => light(1) },
-      { cap: `Of the restored homes, ${fmt.num(h.rwr)} changed hands, against ${fmt.num(h.ref)} where the loss was a quarter to a half.`, ms: 3800, run: () => light([0, 1]) },
-      { cap: `The new owners are not faster: at 27 months they have regained ${fmt.num(rwr.rolls[2].F)} of the value, the pre-storm owners ${fmt.num(ret.rolls[2].F)}.`, ms: 4400, run: () => { state.label = "F"; paintLabels(); light([0, 1]); } },
+      { cap: "Each row is one recovery pathway of a home with structural loss of at least 75% (L75); each lot one post-storm roll.", ms: 3800, run: () => light(null) },
+      { cap: `Restoration under original ownership: ${fmt.pct(ret.share)} of these homes.`, ms: 3400, run: () => light(0) },
+      { cap: `Recovery without return: ${fmt.pct(rwr.share)}, restored under new ownership.`, ms: 3400, run: () => light(1) },
+      { cap: `Of the restored homes, ${fmt.pct(h.rwr)} were under a new owner, against ${fmt.pct(h.ref)} where the loss was 25% to under 50%.`, ms: 3800, run: () => light([0, 1]) },
+      { cap: `Restoration under new ownership is not faster: capped R at 27 months is ${fmt.pct(rwr.rolls[2].F)} under new owners and ${fmt.pct(ret.rolls[2].F)} under original owners.`, ms: 4400, run: () => { state.label = "F"; paintLabels(); light([0, 1]); } },
       { cap: `${fmt.pct(D.paths[4].share)} of the lots are still cleared 39 months after landfall.`, ms: 3400, run: () => light(4) },
     ],
     after: () => {},
     rest: () => { state.label = "F"; paintLabels(); light(null); },
-  }).attach(tourHost);
+  }).attach(tourHost, { figure });
 }

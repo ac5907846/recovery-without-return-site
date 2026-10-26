@@ -1,36 +1,37 @@
-r"""The landing page, Two clocks: a hundred damaged resident-owned homes
-followed through the four rolls after the storm, by structural loss, and
-the recovery matrix of Figure 1 filled with the shares (Figure 4 and
-Table 2 of the paper; Figure S13 for the seven states).
+r"""The landing page, Two clocks: a hundred L75 resident owner-occupied
+homes followed through the four rolls after the storm, by structural loss,
+and the recovery matrix of Figure 1 filled with the shares (Figures 3 and
+4 and Table 2 of the paper; Figure S5 for the eight states).
 
 Reads a18 taxonomy_by_loss.csv and rwr_share.csv (the balanced sample:
 seasons 2016 to 2021, every season reaches the fourth roll) and the
 months of the rolls from a15 d1_restoration.csv.
 """
 
-from .common import check, months, num, pct, q, rd, ztest
+from .common import check, check_groups, months, num, pct, q, rd, ztest
 
-BINS = [(">=.75", "Lost .75 or more", "three quarters or more of the structure"),
-        (".50-.75", "Lost .50 to .75", "half to three quarters of the structure"),
-        (".25-.50", "Lost .25 to .50", "a quarter to a half of the structure"),
-        ("all", "All damaged", "a quarter or more of the structure")]
+BINS = [(">=.75", "L ≥75%", "structural loss of at least 75%"),
+        (".50-.75", "50% ≤ L <75%", "structural loss of 50% to under 75%"),
+        (".25-.50", "25% ≤ L <50%", "structural loss of 25% to under 50%"),
+        ("all", "All L25", "structural loss of at least 25%")]
 
-# the seven states of the taxonomy and the five cells of the recovery matrix (Figure 1)
+# the eight states of Table 2 and the five cells of the recovery matrix (Figure 1); the keys are the a18 state codes
 STATES = [
-    ("recovery with return", "rr", "Recovery with return", "restored, the pre-storm owner still there with the homestead"),
-    ("restored, same owner, no homestead", "rr", "Restored, same owner, no homestead", "restored, the same owner name, the homestead exemption dropped"),
-    ("recovery without return: restored then sold", "rt", "Restored, then sold", "restored by the pre-storm owner, then sold"),
-    ("recovery without return: sold then restored", "rt", "Sold, then restored", "sold while damaged, restored by the new owner"),
-    ("stranded incumbent", "ur", "Stranded incumbent", "not restored, the pre-storm owner still there"),
-    ("unresolved transition", "ut", "Unresolved transition", "not restored, under a new owner"),
+    ("recovery with return", "rr", "Restored, original owner with homestead", "restored, the pre-storm owner recorded with the homestead exemption"),
+    ("restored, same owner, no homestead", "rr", "Restored, original owner without homestead", "restored, the same owner, the homestead exemption no longer recorded"),
+    ("recovery without return: sold then restored", "rt", "Restored, new owner: sold before restoration", "sold for value while unrestored, restored under the new owner"),
+    ("recovery without return: restored then sold", "rt", "Restored, new owner: sold after restoration", "restored by the original owner, then sold for value"),
+    ("recovery without return: owner change, no sale", "rt", "Restored, new owner: no recorded sale", "restored, a new owner recorded without a sale for value (inheritance, trust, foreclosure)"),
+    ("stranded incumbent", "ur", "Unrestored, original owner", "not restored, the original owner recorded"),
+    ("unresolved transition", "ut", "Unrestored, new owner", "not restored, a new owner recorded"),
     ("cleared", "cl", "Cleared lot", "no structure on the roll"),
 ]
 CLASSES = [
-    {"key": "rr", "label": "Restored, retained", "name": "recovery with return"},
-    {"key": "rt", "label": "Restored, transferred", "name": "recovery without return (RWR)"},
-    {"key": "ur", "label": "Unrestored, retained", "name": "stranded incumbent"},
-    {"key": "ut", "label": "Unrestored, transferred", "name": "unresolved transition"},
-    {"key": "cl", "label": "Cleared lot", "name": "ownership retained or transferred"},
+    {"key": "rr", "label": "Restored, original owner", "name": "restoration under original ownership"},
+    {"key": "rt", "label": "Restored, new owner", "name": "restoration under new ownership (recovery without return)"},
+    {"key": "ur", "label": "Unrestored, original owner", "name": "retained without restoration"},
+    {"key": "ut", "label": "Unrestored, new owner", "name": "transferred without restoration"},
+    {"key": "cl", "label": "Cleared lot", "name": "no structure on the roll"},
 ]
 
 
@@ -80,35 +81,31 @@ def build():
         "classes": CLASSES,
         "cells": cells(tb),
         "rwr": rwr_table(rb),
-        "sample": "resident owner-occupied homes of the storm-struck tracts held since two rolls before the storm, "
-                  "seasons 2016 to 2021",
+        "sample": "resident owner-occupied homes of affected tracts, under the same owner for at least two rolls "
+                  "before the storm, seasons 2016 to 2021",
     }}
 
 
 def checks(files):
     s = files["street.json"]
     c4 = s["cells"][">=.75"][4]["states"]
+    c1 = s["cells"][">=.75"][1]["states"]
     rw = s["rwr"]
-    rwr4 = c4["recovery without return: sold then restored"][0] + c4["recovery without return: restored then sold"][0]
+    cls = {c: sum(v[0] for st, v in c4.items() if next(x[1] for x in STATES if x[0] == st) == c) for c in ("rr", "rt", "ur", "ut", "cl")}
     return [
-        check("lost .75 or more, 39 months: recovery with return", pct(c4["recovery with return"][0]),
-              r"by then (\d+%) have been restored and are occupied by the pre-storm household"),
-        check("lost .75 or more, 39 months: restored under a new owner", pct(rwr4), r"(\d+%) have been restored under a new owner"),
-        check("lost .75 or more, 39 months: stranded incumbent", pct(c4["stranded incumbent"][0]),
-              r"(\d+%) stand unrestored with the same owner"),
-        check("lost .75 or more, 39 months: unresolved transition", pct(c4["unresolved transition"][0]),
-              r"(\d+%) unrestored with a new one"),
-        check("lost .75 or more, 39 months: cleared lot", pct(c4["cleared"][0]), r"(\d+%) still do after 39 months"),
-        check("lost .75 or more, 3 months: cleared lot", pct(s["cells"][">=.75"][1]["states"]["cleared"][0]),
-              r"(\d+%) stand as cleared lots on the first roll"),
-        check("RWR share among restored, 39 months, lost .25 to .50", num(rw[".25-.50"][4]["share"]),
-              r"At 39 months it is (\.\d+) for homes that lost a quarter to a half"),
-        check("RWR share among restored, 39 months, lost .50 to .75", num(rw[".50-.75"][4]["share"]),
-              r"(\.\d+) for half to three quarters"),
-        check("RWR share among restored, 39 months, lost .75 or more", num(rw[">=.75"][4]["share"]),
-              r"and (\.\d+) for three quarters or more \(95%"),
-        check("RWR share, 39 months, lost .75 or more: lower bound", num(rw[">=.75"][4]["lo"]),
-              r"\.35 to \.37 and (\.\d+) to \.\d+ at the ends"),
-        check("RWR share, 39 months, lost .75 or more: upper bound", num(rw[">=.75"][4]["hi"]),
-              r"\.35 to \.37 and \.\d+ to (\.\d+) at the ends"),
+        check("L75, 39 months: restored under the original owner with homestead", pct(c4["recovery with return"][0]),
+              r"(\d+%) had been restored under their original owners with homestead status retained"),
+        check("L75, 39 months: restored under new ownership", pct(cls["rt"]), r"another (\d+%) were restored under new ownership"),
+        check("L75, 39 months: unrestored", pct(cls["ur"] + cls["ut"]), r"(\d+%) were unrestored and \d+% were cleared lots"),
+        check("L75, 39 months: cleared lots", pct(cls["cl"]), r"\d+% were unrestored and (\d+%) were cleared lots"),
+        check("L75, 3 months: cleared lots", pct(c1["cleared"][0]), r"declined from (\d+%) at the first post-storm assessment"),
+        check("new owner among restored L75 homes, 39 months", pct(rw[">=.75"][4]["share"]),
+              r"Among restored homes, (\d+%) had changed ownership"),
+        check("the same, 95% CI", f"[{pct(rw['>=.75'][4]['lo'])}, {pct(rw['>=.75'][4]['hi'])}]",
+              r"Among restored homes, \d+% had changed ownership \(95% CI (\[\d+%, \d+%\])"),
+        check_groups("new owner among restored, 39 months, by structural loss category",
+                     ", ".join(pct(rw[b][4]["share"]) for b in (".25-.50", ".50-.75", ">=.75")),
+                     r"accounted for (\d+%), (\d+%), and (\d+%) of restored homes"),
+        check("L75 against 25% ≤ L <50% at 39 months: p below .001", "p < .001" if rw[">=.75"][4]["p"] < .001 else num(rw[">=.75"][4]["p"], 3),
+              r"statistically significant at 39 months \((p < \.001)\)"),
     ]

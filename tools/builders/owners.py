@@ -1,6 +1,7 @@
-r"""The Owner occupancy page (H3 and the extension H4): the owner cards of
-Figure 7, the H3 gaps with their checks (Table 5), the Cape Coral and
-Charlotte permit clocks, and the absentee neighborhoods.
+r"""The Owner occupancy page (H3a and the exploratory H3b): the owner
+cards of Figure 7, the estimates of Table 6 with the alternative
+specifications of Section 4.5, the Cape Coral and Charlotte permit clocks,
+and the neighborhood-level extension.
 
 Reads a15 d1_restoration.csv (seasons 2016 to 2022, the sample of
 Figure 7), h5_models.csv, d10_tract_ownership.csv, d10_tract_model_k2.csv,
@@ -8,23 +9,22 @@ d10_tract_model_k3.csv; a17 d5_permit_clock.csv, d5_cox.csv,
 d5_charlotte.csv.
 """
 
-from .common import check, est, months, num, pct, rd
+from .common import check, check_groups, est, months, num, pct, rd
 
-GROUPS = [("resident", "Resident owner-occupant", "an individual or trust with a homestead exemption"),
-          ("nonresident", "Non-resident individual", "an individual or trust without one: second homes and small landlords"),
-          ("business", "Business entity", "a corporation, company, partnership or trust company")]
-LOSS = [(".25-.50", "Lost .25 to .50"), (".50-.75", "Lost .50 to .75"), (">=.75", "Lost .75 or more")]
-VARIANTS = [("main", "main model", "pre-specified"), ("tract_clusters", "tract clusters", "check"),
-            ("threshold_75", "restored at .75 of pre-storm value", "check"),
-            ("threshold_100", "restored at 1.00 of pre-storm value", "check"),
-            ("trend_bw02", "county trend, bandwidth .02", "check"), ("D20", "tracts with D of 20 or more", "check"),
-            ("dor_code", "counties with the DOR hurricane code", "check"), ("without_2024", "without the 2024 season", "check"),
-            ("added_tract_relative", "relative to the tract's undamaged houses", "added check"),
-            ("added_without_Lee", "without Lee County", "added check")]
+GROUPS = [("resident", "Resident owner-occupant", "an individual or trust with a homestead exemption on the storm-year roll"),
+          ("nonresident", "Nonresident individual", "an individual or trust without a homestead exemption"),
+          ("business", "Business entity", "a corporate or other business owner")]
+LOSS = [(".25-.50", "25% ≤ L <50%"), (".50-.75", "50% ≤ L <75%"), (">=.75", "L ≥75%")]
+# the main specification and the alternative specifications of Section 4.5
+VARIANTS = [("main", "Main model, R ≥90%", True), ("tract_clusters", "Tract clusters", False),
+            ("threshold_75", "R ≥75%", False), ("threshold_100", "R ≥100%", False),
+            ("trend_bw02", "Wider reassessment-trend bandwidth", False), ("D20", "Tracts with D ≥20", False),
+            ("dor_code", "Homes carrying the DOR hurricane code", False), ("without_2024", "Seasons before 2024", False),
+            ("added_tract_relative", "Tract-adjusted R ≥90%", False), ("added_without_Lee", "Without Lee County", False)]
 EVENTS = [("structure permit issued", "Structure permit issued"), ("structure permit finaled", "Structure permit finaled"),
           ("roof permit issued", "Roof permit issued"), ("new-house permit issued", "New-house permit issued")]
-TERCILE = [("nonresident_share", "Non-resident owners' share"), ("business_share", "Business owners' share"),
-           ("turnover_pre", "Turnover before the storm")]
+TERCILE = [("nonresident_share", "Nonresident ownership share"), ("business_share", "Business ownership share"),
+           ("turnover_pre", "Pre-storm ownership turnover")]
 
 
 def d1():
@@ -61,11 +61,11 @@ def build():
 
     gaps = []
     for term, who in (("business_x_damaged", "business"), ("nonresident_x_damaged", "nonresident")):
-        for v, label, status in VARIANTS:
+        for v, label, main in VARIANTS:
             for k in (2, 3):
                 x = h5[(h5["term"] == term) & (h5["variant"] == v) & (h5["horizon"] == k)]
                 if len(x):
-                    gaps.append({"who": who, "variant": v, "label": label, "k": k, "status": status, **est(x.iloc[0])})
+                    gaps.append({"who": who, "variant": v, "label": label, "k": k, "main": main, **est(x.iloc[0])})
 
     permits = []
     for ev, label in EVENTS:
@@ -97,7 +97,10 @@ def build():
     for k in (2, 3):
         m = rd("a15_recovery_tests", f"d10_tract_model_k{k}.csv")
         for _, r in m.iterrows():
-            model.append({"k": k, "term": r["term"], **est(r)})
+            # shares enter as fractions; the paper reports the ownership shares per 10 percentage points (scale 10),
+            # mean structural loss per 10 points too, and tract exposure D per unit of its log (the model term)
+            scale = 10 if r["term"] in ("nonresident_share", "business_share", "turnover_pre", "mean_loss") else 100
+            model.append({"k": k, "term": r["term"], **est(r, scale=scale)})
 
     return {"owners.json": {
         "months": months(),
@@ -112,45 +115,51 @@ def build():
 def checks(files):
     o = files["owners.json"]
     c = {x["key"]: x for x in o["cards"]}
-
-    def tri(g):
-        a, b, d = (pct(r["share"]) for r in c[g]["restored"] if r["k"] in (2, 3, 4))
-        return f"{a}, {b} and {d}"
-
-    gp ={(x["who"], x["variant"], x["k"]): x for x in o["gaps"]}
+    gp = {(x["who"], x["variant"], x["k"]): x for x in o["gaps"]}
     b2, b3 = gp[("business", "main", 2)], gp[("business", "main", 3)]
     n2, n3 = gp[("nonresident", "main", 2)], gp[("nonresident", "main", 3)]
-    iv = lambda r: f"{num(r['lo'], 1)} to {num(r['hi'], 1)}"  # noqa: E731
     hr = o["hr"]
     pis = next(p for p in o["permits"] if p["key"] == "structure permit issued")["groups"]
     at36 = {g: next(r["share"] for r in v if r["m"] == 36) for g, v in pis.items()}
     t2 = {r["tercile"]: r for t in o["terciles"] if t["key"] == "nonresident_share" for r in t["rows"] if r["k"] == 2}
-    tm = next(r for r in o["tract_model"] if r["k"] == 2 and r["term"] == "nonresident_share")
+    tm2 = next(r for r in o["tract_model"] if r["k"] == 2 and r["term"] == "nonresident_share")
+    tm3 = next(r for r in o["tract_model"] if r["k"] == 3 and r["term"] == "nonresident_share")
     res_cl = [r["share"] for r in c["resident"]["cleared"] if r["k"] in (2, 3, 4)]
+    abs_cl = [r["share"] for g in ("nonresident", "business") for r in c[g]["cleared"] if r["k"] in (2, 3, 4)]
+    rng = lambda a: f"{num(100 * min(a), 0)}% to {num(100 * max(a), 0)}%"  # noqa: E731
+    r4 = lambda g: pct(next(r["share"] for r in c[g]["restored"] if r["k"] == 4))  # noqa: E731
+    ci = lambda r: f"95% CI [{num(r['lo'], 1)}, {num(r['hi'], 1)}]"  # noqa: E731
     return [
-        check("restored, residents, 15/27/39 months", tri("resident"),
-              r"seasons, (\d+%, \d+% and \d+%) of resident-owned homes are restored"),
-        check("restored, non-resident individuals", tri("nonresident"),
-              r"against (\d+%, \d+% and \d+%) of homes owned by non-resident individuals"),
-        check("restored, business entities", tri("business"), r"and (\d+%, \d+% and \d+%) of business-owned homes"),
-        check("cleared lots, residents (range)", f"{num(100 * min(res_cl), 0)} to {num(100 * max(res_cl), 0)}%",
-              r"cleared lots are (\d+ to \d+%) of resident homes"),
-        check("H3 business at s+2", f"{num(-b2['e'], 1)} pp less often than residents at s+2 ({iv(b2)})",
-              r"business entities restore ([\d.]+ pp less often than residents at s\+2 \([-.\d]+ to [-.\d]+\))"),
-        check("H3 business at s+3", f"{num(-b3['e'], 1)} pp less at s+3 ({iv(b3)})", r"and ([\d.]+ pp less at s\+3 \([-.\d]+ to [-.\d]+\))"),
-        check("H3 non-resident at s+2 and s+3", f"{num(-n2['e'], 1)} and {num(-n3['e'], 1)} pp less ({iv(n2)}; {iv(n3)})",
-              r"non-resident individuals ([\d.]+ and [\d.]+ pp less \([-.\d]+ to [-.\d]+; [-.\d]+ to [-.\d]+\))"),
-        check("Cape Coral HR, business", f"{num(hr['business']['hr'])} times the hazard of a resident ({num(hr['business']['lo'])} to {num(hr['business']['hi'])})",
-              r"permit at (\.\d+ times the hazard of a resident \(\.\d+ to \.\d+\))"),
-        check("Cape Coral HR, non-resident", f"{num(hr['nonresident']['hr'])} ({num(hr['nonresident']['lo'])} to {num(hr['nonresident']['hi'])})",
-              r"a non-resident individual at (\.\d+ \(\.\d+ to \.\d+\))"),
-        check("Cape Coral permit within 36 months: residents and businesses", f"{pct(at36['resident'])} of resident-owned damaged houses had a permit within 36 months against {pct(at36['business'])}",
-              r"(\d+% of resident-owned damaged houses had a permit within 36 months against \d+%)"),
-        check("H4 restored at 15 months: most and least absentee thirds", f"{pct(t2['high']['restored'])} at 15 months against {pct(t2['low']['restored'])}",
-              r"restored at (\d+% at 15 months against \d+%)"),
-        check("H4 non-resident share, per unit share", f"{num(tm['e'], 0)} pp per unit share, {num(tm['lo'], 0)} to {num(tm['hi'], 0)}",
-              r"carries the gradient \(([-\d]+ pp per unit share, [-\d]+ to [-\d]+)\)"),
-        {"label": "every H3 variant has the business sign (paper: 'Every variant has the sign')",
-         "site": ", ".join(f"{v} s+{k} {num(x['e'], 1)}" for (w, v, k), x in gp.items() if w == "business" and x["e"] >= 0) or "all negative",
-         "paper": "all negative", "ok": all(x["e"] < 0 for (w, v, k), x in gp.items() if w == "business")},
+        check_groups("restored within 39 months: residents, nonresident individuals, business entities",
+                     f"{r4('resident')}, {r4('nonresident')}, {r4('business')}",
+                     r"(\d+%) of resident owner-occupied homes were restored within 39 months, compared with (\d+%) of homes "
+                     r"owned by nonresident individuals and (\d+%) owned by business entities"),
+        check_groups("cleared lots: residents, nonresident owners", f"{rng(res_cl)}, {rng(abs_cl)}",
+                     r"only (\d+% to \d+%) of resident-owned properties, compared with (\d+% to \d+%)"),
+        check_groups("H3a: nonresident individuals at 15 and 27 months (pp less likely)", f"{num(-n2['e'], 1)}, {num(-n3['e'], 1)}",
+                     r"nonresident individuals were ([\d.]+) pp less likely to have restored their homes at 15 months and ([\d.]+) pp less likely at 27 months"),
+        check_groups("H3a: business entities at 15 and 27 months (pp)", f"{num(b2['e'], 1)}, {num(b3['e'], 1)}",
+                     r"not statistically significant at 15 months \(([-.\d]+) pp; p = \.\d+\) and became significant at 27 months \(([-.\d]+) pp;"),
+        check_groups("Cape Coral hazard ratios: business, nonresident", f"{num(hr['business']['hr'])}, {num(hr['nonresident']['hr'])}",
+                     r"\(hazard ratio \[HR\] = (\.\d+); 95% CI \[\.\d+, \.\d+\]\), as did nonresident individuals \(HR = (\.\d+);"),
+        check_groups("Cape Coral HR 95% CIs: business, nonresident",
+                     f"[{num(hr['business']['lo'])}, {num(hr['business']['hi'])}], [{num(hr['nonresident']['lo'])}, {num(hr['nonresident']['hi'])}]",
+                     r"\(hazard ratio \[HR\] = \.\d+; 95% CI (\[\.\d+, \.\d+\])\), as did nonresident individuals \(HR = \.\d+; 95% CI (\[\.\d+, \.\d+\])"),
+        check_groups("structure permit within 36 months: residents, nonresident, business",
+                     f"{pct(at36['resident'])}, {pct(at36['nonresident'])}, {pct(at36['business'])}",
+                     r"Within 36 months, (\d+%) of L25 resident-owned properties had received a structure permit, compared with (\d+%) of "
+                     r"nonresident-owned and (\d+%) of business-owned"),
+        check_groups("H3b: restored at 15 months, highest and lowest third of nonresident ownership",
+                     f"{pct(t2['high']['restored'])}, {pct(t2['low']['restored'])}",
+                     r"restoration reached (\d+%) in the third of census tracts with the highest nonresident ownership, compared with (\d+%)"),
+        check("H3b: nonresident share, pp lower per 10 points, 15 months", num(-tm2["e"], 1),
+              r"10-percentage-point higher nonresident ownership share was associated with a ([-.\d]+)-pp lower restored share"),
+        check("the same, 95% CI", ci(tm2), r"lower restored share \((95% CI \[[-.\d]+, [-.\d]+\])"),
+        check("H3b at 27 months (pp per 10 points)", num(tm3["e"], 1), r"at 27 months, the association was weaker \(([-.\d]+) pp;"),
+        check("the same, 95% CI", ci(tm3), r"at 27 months, the association was weaker \([-.\d]+ pp; (95% CI \[[-.\d]+, [-.\d]+\])"),
+        check("Charlotte County: permit and roll year built, kappa", num(ag_kappa(o)), r"construction years recorded in the assessment rolls \(κ = (\.\d+)\)"),
     ]
+
+
+def ag_kappa(o):
+    return o["charlotte_kappa"]

@@ -1,27 +1,30 @@
 /* A guided tour for one page, and the lap through the whole site.
 
-   Each page's tour is a list of steps with a Play/Pause button, a thin
-   progress bar and a one-line caption. On arrival the tour plays by
-   itself; when it reaches its last step the site moves to the next tab
+   Each page's tour is a list of steps with a one-line caption and one
+   round icon button (pause while it plays, play while it rests). The
+   tour starts by itself whenever a page opens, by the address bar or by
+   a tab; when it reaches its last step the site moves to the next tab
    and runs that page's tour, through every tab, then starts over. The
    lap counter and the position travel in sessionStorage. The first lap
-   runs at a quicker pace, later laps at the normal one. Any pointer,
-   key, wheel or touch input anywhere pauses the tour and the lap; only
-   the button resumes them. With reduced motion requested, or with
+   runs at a quicker pace, later laps at the normal one. Two things stop
+   or resume it, and both toggle: the button, and a click on the page's
+   figure (a drag on the map or a click on a control inside the figure
+   does not count). Scrolling, keys and clicks elsewhere leave it alone.
+   Nothing shows its progress. With reduced motion requested, or with
    ?still=1 in the address (tests and screenshots), nothing plays and
    the page rests in its final state. */
 
-import { el } from "./dom.js";
+import { el, svg } from "./dom.js";
 import { PAGES } from "../pages.js";
 
 const STOP = { stop: true };
 const KEY = "recovery-without-return.tour";
 const FAST = 0.7;
+const DRAG = 6;                       /* px of pointer travel that make a click a drag */
 const reduced = window.matchMedia
   && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const still = /[?&]still=1\b/.test(location.search);
 const all = [];
-let listening = false;
 
 function currentPage() {
   const stem = (location.pathname.split("/").pop() || "index.html").replace(/\.html$/, "") || "index";
@@ -43,7 +46,7 @@ function lapState() {
   const page = currentPage();
   let s = readState();
   if (!s || s.page !== page.id) {
-    s = { lap: s ? s.lap : 0, page: page.id, step: 0, paused: s ? !!s.paused : false };
+    s = { lap: s ? s.lap : 0, page: page.id, step: 0 };
     writeState(s);
   }
   return s;
@@ -60,21 +63,19 @@ function handOff() {
   if (i < 0) return;
   const next = PAGES[(i + 1) % PAGES.length];
   const s = readState() || { lap: 0 };
-  writeState({ lap: (i + 1) % PAGES.length === 0 ? (s.lap || 0) + 1 : (s.lap || 0), page: next.id, step: 0, paused: false });
+  writeState({ lap: (i + 1) % PAGES.length === 0 ? (s.lap || 0) + 1 : (s.lap || 0), page: next.id, step: 0 });
   location.href = next.file;
 }
 
-function listen() {
-  if (listening) return;
-  listening = true;
-  const interrupt = (e) => {
-    if (e.target && e.target.closest && e.target.closest(".tour")) return;
-    for (const t of all) t.pause();
-  };
-  document.addEventListener("pointerdown", interrupt, true);
-  document.addEventListener("keydown", interrupt, true);
-  window.addEventListener("wheel", interrupt, { passive: true, capture: true });
-  window.addEventListener("touchstart", interrupt, { passive: true, capture: true });
+function icon(kind) {
+  const g = svg("svg", { viewBox: "0 0 16 16", width: 14, height: 14, "aria-hidden": "true", class: `tour-ico ${kind}` });
+  if (kind === "pause") {
+    g.append(svg("rect", { x: 3, y: 2.5, width: 3.4, height: 11, rx: .6 }),
+      svg("rect", { x: 9.6, y: 2.5, width: 3.4, height: 11, rx: .6 }));
+  } else {
+    g.append(svg("path", { d: "M4.2 2.4 L13.4 8 L4.2 13.6 Z" }));
+  }
+  return g;
 }
 
 /**
@@ -91,8 +92,8 @@ export function tour({ name, steps, after, rest, handoff = true }) {
   let ui = null;
   let cap = null;
   let btn = null;
-  let bar = null;
-  let word = null;
+  let icoPlay = null;
+  let icoPause = null;
   const state = lapState();
   if (state.step > 0 && state.step < steps.length) idx = state.step;
 
@@ -104,30 +105,12 @@ export function tour({ name, steps, after, rest, handoff = true }) {
   }
   const ctx = { sleep, caption: (t) => { if (cap) cap.textContent = t; } };
 
-  function progress(step) {
-    if (!bar) return;
-    const total = steps.reduce((a, s) => a + s.ms, 0);
-    const before = steps.slice(0, idx).reduce((a, s) => a + s.ms, 0);
-    bar.style.transition = "none";
-    bar.style.transform = `scaleX(${before / total})`;
-    bar.getBoundingClientRect();
-    bar.style.transition = `transform ${step.ms * speed()}ms linear`;
-    bar.style.transform = `scaleX(${(before + step.ms) / total})`;
-  }
-  function freeze() {
-    if (!bar) return;
-    const now = getComputedStyle(bar).transform;
-    bar.style.transition = "none";
-    bar.style.transform = now;
-  }
-
   function loop() {
     const g = gen;
     const step = steps[idx];
     ctx.caption(step.cap);
-    progress(step);
     const s = readState();
-    if (s) writeState({ ...s, step: idx, paused: false });
+    if (s) writeState({ ...s, step: idx });
     Promise.resolve().then(() => step.run(ctx)).then(() => sleep(step.ms)).then(next, (e) => {
       if (e !== STOP) { console.error(e); pause(); }
     });
@@ -150,15 +133,15 @@ export function tour({ name, steps, after, rest, handoff = true }) {
   function paint() {
     if (!ui) return;
     ui.classList.toggle("on", playing);
-    word.textContent = playing ? "Pause tour" : "Play tour";
+    icoPause.style.display = playing ? "" : "none";
+    icoPlay.style.display = playing ? "none" : "";
     btn.setAttribute("aria-label", `${playing ? "Pause" : "Play"} the tour of ${name}`);
+    btn.title = playing ? "Pause" : "Play";
   }
   function play() {
     if (playing || !ui) return;
     playing = true;
     gen += 1;
-    const s = readState();
-    if (s) writeState({ ...s, paused: false });
     paint();
     loop();
   }
@@ -166,32 +149,43 @@ export function tour({ name, steps, after, rest, handoff = true }) {
     if (!playing) return;
     playing = false;
     gen += 1;
-    freeze();
-    const s = readState();
-    if (s) writeState({ ...s, paused: true });
     if (after) after();
     paint();
   }
+  const toggle = () => (playing ? pause() : play());
+
+  /* a plain click on the figure toggles the tour; a drag (the map) or a
+     click on a control inside it does not */
+  function watch(node) {
+    let down = null;
+    node.addEventListener("pointerdown", (e) => { down = { x: e.clientX, y: e.clientY }; }, true);
+    node.addEventListener("click", (e) => {
+      const t = e.target;
+      if (t && t.closest && t.closest("button, a, input, select, label, .tour")) return;
+      if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > DRAG) return;
+      toggle();
+    });
+  }
 
   function attach(host, opts = {}) {
-    listen();
     if (!ui) {
-      cap = el("span.tour-cap", { "aria-live": "polite", text: opts.idle || "Press Play for a guided tour of this page." });
-      word = el("span.tour-t", { text: "Play tour" });
-      bar = el("i.tour-bar");
-      btn = el("button.tour-btn", { type: "button", onclick: () => (playing ? pause() : play()) }, [word, bar]);
+      cap = el("span.tour-cap", { "aria-live": "polite", text: opts.idle || "" });
+      icoPlay = icon("play");
+      icoPause = icon("pause");
+      btn = el("button.tour-btn", { type: "button", onclick: toggle }, [icoPlay, icoPause]);
       ui = el("div.tour", {}, [cap, btn]);
     }
     host.appendChild(ui);
+    const figs = Array.isArray(opts.figure) ? opts.figure : opts.figure ? [opts.figure] : [];
+    for (const f of figs) if (f) watch(f);
     paint();
-    if (opts.autoplay === false) return inst;          /* a linked view: hold it, the tour waits for Play */
+    if (opts.autoplay === false) { if (rest) rest(); return inst; }   /* a shared view in the address holds still */
     if (reduced || still) { if (rest) rest(); return inst; }
-    if (!state.paused) play();
-    else if (rest) rest();
+    play();
     return inst;
   }
 
-  const inst = { attach, play, pause, isPlaying: () => playing };
+  const inst = { attach, play, pause, toggle, isPlaying: () => playing };
   all.push(inst);
   return inst;
 }

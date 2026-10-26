@@ -1,11 +1,12 @@
 /* The map page, Seven seasons (Figures 2 and 5). Florida in the paper's
-   map projection; the storm-struck tracts of one season or of all, filled
-   by a quantity of Figure 5 (share of damaged homes that lost half or
-   more; share of restored homes under a new owner at about 27 months;
-   share cleared at 27 months) or simply marked; the HURDAT2 best track of
-   the season's storms, every 6-hourly fix, and a ring at each landfall
-   record on Florida's own coast (Figure 2's rule). Choosing a season
-   zooms to its tracts; the wheel, a drag or the buttons move the map.
+   map projection; the affected tracts (D >=5) of one season or of all,
+   filled by a quantity of Figure 5 (the L50 share among L25 resident
+   owner-occupied homes; the share of restored homes under a new owner at
+   about 27 months; the share cleared at 27 months) or simply marked; the
+   HURDAT2 best track of the season's storms, every 6-hourly fix, and a
+   ring at every landfall record inside the frame, as in Figure 2.
+   Choosing a season zooms to its tracts; the wheel, a drag or the buttons
+   move the map.
 
    Data: data/map.json and data/geo/*.json (tools/builders/map.py). */
 
@@ -18,10 +19,10 @@ import { tour, reduced } from "../lib/tour.js";
 import { howto, pick, finding } from "../lib/read.js";
 
 const QUANT = [
-  { key: "struck", label: "Struck tracts", col: null, title: "Storm-struck tracts" },
-  { key: "destroyed", label: "Lost half or more", col: "destroyed_share", ramp: "navy", title: "Damaged homes that lost half or more of the structure" },
+  { key: "struck", label: "Affected tracts", col: null, title: "Affected tracts (D ≥5)" },
+  { key: "destroyed", label: "L50 share", col: "destroyed_share", ramp: "navy", title: "L25 resident owner-occupied homes with structural loss of at least 50%, first post-storm roll" },
   { key: "rwr", label: "New owner among restored", col: "rwr_share_3", ramp: "wine", title: "Restored homes under a new owner, about 27 months after landfall", at27: true },
-  { key: "cleared", label: "Cleared lot", col: "cleared_share_3", ramp: "green", title: "Damaged homes on a cleared lot, about 27 months after landfall", at27: true },
+  { key: "cleared", label: "Cleared lot", col: "cleared_share_3", ramp: "green", title: "L25 homes on a cleared lot, about 27 months after landfall", at27: true },
 ];
 const DASH = ["", "9 5", "2 4"];
 
@@ -47,7 +48,7 @@ export function mapChart(host, app) {
   ]);
 
   /* ---- the map */
-  const root = svg("svg", { viewBox: `0 0 ${F.w} ${F.h}`, role: "img", "aria-label": "Map of Florida with the storm-struck tracts" });
+  const root = svg("svg", { viewBox: `0 0 ${F.w} ${F.h}`, role: "img", "aria-label": "Map of Florida with the affected tracts" });
   const defs = svg("defs");
   const hatch = svg("pattern", { id: "hatch", patternUnits: "userSpaceOnUse", width: 400, height: 400, patternTransform: "rotate(45)" }, [
     svg("rect", { width: 400, height: 400, fill: "#fafafa" }),
@@ -133,8 +134,8 @@ export function mapChart(host, app) {
     const lfs = fixes.filter((f) => f[6]);
     g.addEventListener("pointerenter", (ev) => tip.show(ev, {
       title: t.label,
-      rows: [["maximum wind", `${t.max_wind} kt`], ["Florida landfall records", String(lfs.length)], ...lfs.map((f, i) => [`landfall ${i + 1}`, fmt.fixTime(f[2])])],
-      note: t.landfall_fl ? "Rings: landfall records on Florida's coast (HURDAT2 identifier L)." : "No landfall on Florida's coast in HURDAT2.",
+      rows: [["maximum wind", `${t.max_wind} kt`], ["landfall records in the frame", String(lfs.length)], ...lfs.map((f, i) => [`landfall ${i + 1}`, fmt.fixTime(f[2])])],
+      note: t.landfall_fl ? "Rings: HURDAT2 landfall records (identifier L) inside the frame, as in Figure 2." : "No HURDAT2 landfall record inside the frame.",
     }));
     g.addEventListener("pointermove", tip.move);
     g.addEventListener("pointerleave", tip.hide);
@@ -167,10 +168,10 @@ export function mapChart(host, app) {
   clear(host).append(tourHost, controls, el("div.panelgrid", {}, [figure, side]));
   howto(host, {
     lines: [
-      "A storm-struck tract has FEMA-verified real-property losses of at least 5 per 100 owner-occupied homes. Tracts of the 2010 and 2020 censuses are drawn as they were for each season.",
-      "Shares are of the damaged resident owner-occupied homes of the tract (structure value lost a quarter or more on the first roll), held since two rolls before the storm. Tracts with fewer than 20 damaged homes are hatched, as in the paper's Figure 5.",
-      "The 27-month quantities are read on the third roll after the storm, which the 2023 and 2024 seasons have not reached.",
-      "Tracks are the National Hurricane Center's HURDAT2 best tracks with every 6-hourly fix; a ring marks a landfall record within 3 km of Florida's coast. Hover a tract or a track for its numbers; scroll or drag to move the map.",
+      "An affected tract has tract exposure D ≥5: at least 5 FEMA-verified real-property losses per 100 owner-occupied housing units in the season. Tracts of the 2010 and 2020 censuses are drawn as they were for each season.",
+      "Shares are of the tract's L25 resident owner-occupied homes (structural loss of at least 25% on the first post-storm roll), under the same owner for at least two rolls before the storm. Tracts with fewer than 20 such homes are hatched, as in Figure 5.",
+      "The 27-month quantities are read on the third post-storm roll (t + 3), which the 2023 and 2024 seasons have not reached.",
+      "Tracks are the National Hurricane Center's HURDAT2 best tracks with every 6-hourly fix; a ring marks every HURDAT2 landfall record (L) inside the frame, as in Figure 2. Hover a tract or a track for its numbers; scroll or drag to move the map.",
     ],
     terms: pick("struck", "loss", "rwr", "cleared", "rolls"),
   });
@@ -325,8 +326,8 @@ export function mapChart(host, app) {
     if (state.season === "all") {
       sHead.textContent = "Seven seasons, 2016 to 2024";
       const tot = seasons.reduce((a, s) => a + s.n_damaged, 0);
-      sList.append(el("dt", { text: "storm-struck tract-seasons" }), el("dd", { text: fmt.count(seasons.reduce((a, s) => a + s.tracts, 0)) }),
-        el("dt", { text: "damaged resident-owned homes" }), el("dd", { text: fmt.count(tot) }));
+      sList.append(el("dt", { text: "affected tract-seasons" }), el("dd", { text: fmt.count(seasons.reduce((a, s) => a + s.tracts, 0)) }),
+        el("dt", { text: "L25 resident owner-occupied homes" }), el("dd", { text: fmt.count(tot) }));
       for (const s of seasons) {
         sKey.append(el("div.keyrow", {}, [el("i.sq", { style: { background: s.color } }), el("span", { text: s.label }), el("b", { text: fmt.count(s.n_damaged) })]));
       }
@@ -339,26 +340,26 @@ export function mapChart(host, app) {
     const sto = G.tracks.filter((t) => s.storms.includes(t.key));
     const add = (k, v) => sList.append(el("dt", { text: k }), el("dd", { text: v }));
     for (const t of sto) add(t.label.split(" ")[0], `${fmt.dateLong(t.date)}, ${t.dr}`);
-    add("storm-struck tracts", fmt.count(s.tracts));
-    add("damaged resident-owned homes", fmt.count(s.n_damaged));
-    add("lost half or more", fmt.pct(s.destroyed));
+    add("affected tracts", fmt.count(s.tracts));
+    add("L25 resident owner-occupied homes", fmt.count(s.n_damaged));
+    add("L50 share", fmt.pct(s.destroyed));
     if (s.restored_3 !== null) {
       add(`restored at ${fmt.mo(s.months_3)} months`, fmt.pct(s.restored_3));
-      add("under a new owner, among restored", fmt.num(s.rwr_3));
+      add("new owner among restored homes", fmt.pct(s.rwr_3));
     } else {
-      add("at 27 months", "not yet on the third roll");
+      add("at 27 months", "not yet on the third post-storm roll");
     }
     sKey.append(el("p.lab", { text: q.title }));
     if (q.col) {
       const scale = el("div.scale-bar", {}, [el("span", { text: "0" }), el("i", { style: { background: `linear-gradient(90deg, ${ramp(q.ramp, 0)}, ${ramp(q.ramp, 1)})` } }), el("span", { text: fmt.pct(vmax) })]);
-      sKey.append(scale, el("div.legend", {}, [el("span.item", {}, [el("i.hatch"), `fewer than ${M.min_homes} damaged homes`]),
+      sKey.append(scale, el("div.legend", {}, [el("span.item", {}, [el("i.hatch"), `fewer than ${M.min_homes} L25 homes`]),
         q.at27 ? el("span.item", {}, [el("i.sq", { style: { background: "#e3e3e0" } }), "no restored home yet, or no third roll"]) : null]));
-      if (q.at27 && s.restored_3 === null) sKey.append(el("p.what", { text: "This season has not reached the third roll; its tracts are shown without a value." }));
+      if (q.at27 && s.restored_3 === null) sKey.append(el("p.what", { text: "This season has not reached the third post-storm roll; its tracts are shown without a value." }));
     } else {
-      sKey.append(el("div.legend", {}, [el("span.item", {}, [el("i.sq", { style: { background: NAVY } }), "storm-struck tract"])]));
+      sKey.append(el("div.legend", {}, [el("span.item", {}, [el("i.sq", { style: { background: NAVY } }), "affected tract"])]));
     }
     legend.append(...sto.map((t, i) => el("span.item", {}, [el("i.swatch" + (sto.length > 1 && i > 0 ? ".dash" : ""), { style: { background: INK, color: INK } }), t.label])),
-      el("span.item", {}, [el("i.ring"), "Florida landfall record"]),
+      el("span.item", {}, [el("i.ring"), "landfall record (HURDAT2)"]),
       el("span.item.note", {}, ["dots: 6-hourly positions"]));
   }
 
@@ -366,14 +367,14 @@ export function mapChart(host, app) {
     r.node.setAttribute("stroke", INK);
     r.node.setAttribute("stroke-width", 1.4);
     const s = bySeason.get(r.season);
-    const rowsT = [["season", s.label], ["damaged resident homes", fmt.count(r.n)]];
-    if (r.n >= M.min_homes) rowsT.push(["lost half or more", fmt.pct(r.destroyed_share)]);
+    const rowsT = [["season", s.label], ["L25 resident homes", fmt.count(r.n)]];
+    if (r.n >= M.min_homes) rowsT.push(["L50 share", fmt.pct(r.destroyed_share)]);
     if (r.n >= M.min_homes && r.restored_share_3 !== null && r.restored_share_3 !== undefined) {
-      rowsT.push([`restored, ${fmt.mo(s.months_3)} months`, fmt.pct(r.restored_share_3)], ["recovery with return", fmt.pct(r.ret_share_3)],
-        ["new owner among restored", r.rwr_share_3 === null ? "no restored home" : fmt.num(r.rwr_share_3)], ["cleared lot", fmt.pct(r.cleared_share_3)]);
+      rowsT.push([`restored, ${fmt.mo(s.months_3)} months`, fmt.pct(r.restored_share_3)], ["restored, original owner", fmt.pct(r.ret_share_3)],
+        ["new owner among restored", r.rwr_share_3 === null ? "no restored home" : fmt.pct(r.rwr_share_3)], ["cleared lot", fmt.pct(r.cleared_share_3)]);
     }
     tip.show(ev, { title: `${countyName[r.county] || r.county} County, tract ${r.fips.slice(5)}`, rows: rowsT,
-      note: r.n < M.min_homes ? `Fewer than ${M.min_homes} damaged homes: the shares are not mapped.` : "" });
+      note: r.n < M.min_homes ? `Fewer than ${M.min_homes} L25 homes: the shares are not mapped.` : "" });
   }
 
   function readHash() {
@@ -391,21 +392,21 @@ export function mapChart(host, app) {
   setVB(state.season === "all" ? full() : fit(bbox.get(state.season)));
 
   const ian = bySeason.get(2022);
-  finding(`Seven hurricane seasons struck ${fmt.count(seasons.reduce((a, s) => a + s.tracts, 0))} tract-seasons and damaged ${fmt.count(seasons.reduce((a, s) => a + s.n_damaged, 0))} resident-owned homes. Of the ${fmt.count(ian.n_damaged)} that Ian damaged, ${fmt.pct(ian.restored_3)} stood restored ${fmt.mo(ian.months_3)} months later, and <span class="rwr">${fmt.num(ian.rwr_3)}</span> of the restored ones were under a new owner.`);
+  finding(`Seven hurricane seasons affected ${fmt.count(seasons.reduce((a, s) => a + s.tracts, 0))} tract-seasons with ${fmt.count(seasons.reduce((a, s) => a + s.n_damaged, 0))} L25 resident owner-occupied homes. Of Ian's ${fmt.count(ian.n_damaged)}, ${fmt.pct(ian.restored_3)} were restored ${fmt.mo(ian.months_3)} months later, and <span class="rwr">${fmt.pct(ian.rwr_3)}</span> of the restored homes were under a new owner.`);
 
   const go = (season, q, ms) => () => { state.season = season; state.q = q; render(true); return new Promise((r) => setTimeout(r, ms || 0)); };
   tour({
     name: "the seven seasons",
     steps: [
-      { cap: "Seven hurricane seasons, 2016 to 2024: every storm-struck tract and the nine best tracks.", ms: 3600, run: go("all", "struck") },
-      { cap: "Michael, 2018: the Panhandle, where the storm flattened whole neighborhoods.", ms: 3600, run: go(2018, "destroyed") },
+      { cap: "Seven hurricane seasons, 2016 to 2024: every affected tract and the nine best tracks.", ms: 3600, run: go("all", "struck") },
+      { cap: "Michael, 2018: the Panhandle, where structural loss was greatest.", ms: 3600, run: go(2018, "destroyed") },
       { cap: "Irma, 2017: a wide storm, with two landfalls on Florida's coast.", ms: 3400, run: go(2017, "struck") },
-      { cap: "Ian, 2022: on the Southwest coast the homes that lost half or more follow the shore and the track.", ms: 4200, run: go(2022, "destroyed") },
-      { cap: "Where Ian destroyed most, the restored homes most often belong to someone new.", ms: 4200, run: go(2022, "rwr") },
+      { cap: "Ian, 2022: on the Southwest coast the L50 homes follow the shore and the track.", ms: 4200, run: go(2022, "destroyed") },
+      { cap: "Where Ian's structural loss was greatest, restored homes most often have a new owner.", ms: 4200, run: go(2022, "rwr") },
       { cap: "Cleared lots at 27 months concentrate on the barrier islands and the canals.", ms: 3800, run: go(2022, "cleared") },
       { cap: "Debby, Helene and Milton, 2024: the season the rolls have only begun to read.", ms: 3600, run: go(2024, "struck") },
     ],
     after: () => {},
     rest: () => { state.season = 2022; state.q = "rwr"; render(false); setVB(fit(bbox.get(2022))); writeHash(); },
-  }).attach(tourHost, { autoplay: !linked, idle: linked ? "A linked view; press Play for the guided tour." : undefined });
+  }).attach(tourHost, { autoplay: !linked, figure });
 }

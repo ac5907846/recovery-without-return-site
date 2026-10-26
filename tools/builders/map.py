@@ -1,6 +1,6 @@
-r"""The map page, Seven seasons (Figures 2 and 5): the storm-struck tracts
-of every season with the HURDAT2 best tracks, and the two clocks by tract
-at about 27 months.
+r"""The map page, Seven seasons (Figures 2 and 5): the affected tracts (D >=5)
+of every season with the HURDAT2 best tracks, and restoration and ownership
+change by tract at about 27 months.
 
 Reads a18 tract_states.csv and season_totals.csv; draws its geometry from
 the raw boundary files the paper's map script reads (TIGER/Line tracts
@@ -12,9 +12,9 @@ top-left corner of the frame with y running down, each ring delta-encoded
 (the first vertex absolute, then the steps), so the browser only scales.
 
 Writes  data/map.json            seasons, storms, the tract-season table (columnar)
-        data/geo/tracts.json     the struck tracts, keyed "vintage:fips"
+        data/geo/tracts.json     the affected tracts, keyed "vintage:fips"
         data/geo/counties.json   Florida's counties with names; Alabama and Georgia as context
-        data/geo/tracks.json     every HURDAT2 row of the study storms, with the paper's landfall rule
+        data/geo/tracks.json     every HURDAT2 row of the study storms; a landfall record (L) inside the frame is ringed, as in Figure 2
 """
 
 import numpy as np
@@ -25,7 +25,8 @@ from .common import RAW, num, pct, rd, storms
 CRS = 3086
 UNIT = 10.0                       # metres per integer unit
 TOL_TRACT, TOL_COUNTY, TOL_CONTEXT = 60.0, 150.0, 600.0
-PAD = 30_000.0                    # the paper's frame: Florida's bounds plus 30 km
+PAD = 30_000.0                    # Florida's bounds plus 30 km (Figure 2 adds 70 km to the west for Sally's loop)
+WEST_PAD = 70_000.0
 TRACK_PAD = 450_000.0             # fixes kept this far outside the frame, so tracks enter from off the map
 MIN_HOMES = 20                    # the paper's hatching rule (Figure 5)
 SEASON_COLOR = {2016: "#8c8c8c", 2017: "#2f6b4f", 2018: "#a8325e", 2020: "#595959", 2022: "#16385c",
@@ -34,7 +35,7 @@ SEASON_COLOR = {2016: "#8c8c8c", 2017: "#2f6b4f", 2018: "#a8325e", 2020: "#59595
 
 def frame(counties):
     minx, miny, maxx, maxy = counties.total_bounds
-    return minx - PAD, miny - PAD, maxx + PAD, maxy + PAD
+    return minx - WEST_PAD, miny - PAD, maxx + PAD, maxy + PAD
 
 
 def encode(geom, fr):
@@ -102,8 +103,9 @@ def tracks(fl_union, fr):
     tp = hurdat()
     pts = gpd.GeoSeries(gpd.points_from_xy(tp["lon"], tp["lat"]), crs=4326).to_crs(CRS)
     tp["x"], tp["y"] = pts.x.to_numpy(), pts.y.to_numpy()
-    near = fl_union.buffer(3_000)                    # a landfall ring only for a landfall on Florida's own coast
-    tp["landfall_fl"] = [(i == "L") and near.contains(p) for i, p in zip(tp["ident"], pts)]
+    # a ring at every HURDAT2 landfall record inside the frame, as in Figure 2 (2026-10-25; the 3 km coast rule before)
+    tp["landfall_fl"] = [(i == "L") and (minx <= x <= maxx) and (miny <= y <= maxy)
+                         for i, x, y in zip(tp["ident"], tp["x"], tp["y"])]
     out = []
     for key, v in storms().items():
         q = tp[tp["storm"] == key].reset_index(drop=True)
@@ -199,10 +201,9 @@ def checks(files):
     return [
         {"label": "struck tract-seasons on the map, every one with a shape", "site": f"{len(m['tracts']['key']):,}",
          "paper": None, "ok": True, "info": True},
-        {"label": "damaged resident owner-occupied homes, all seasons (season totals)",
+        {"label": "L25 resident owner-occupied homes, all seasons (season totals)",
          "site": f"{sum(s['n_damaged'] for s in m['seasons']):,}", "paper": None, "ok": True, "info": True},
-        {"label": "landfall rings under Figure 2's rule (an L record within 3 km of the cartographic coast), "
-                  "Matthew, Irma, Ian, Sally; Ian's Dry Tortugas record lies 4.0 km out",
+        {"label": "landfall rings, every HURDAT2 L record inside the frame as in Figure 2: Matthew, Irma, Ian, Sally",
          "site": ", ".join(str(tk[k]["landfalls_fl"]) for k in ("matthew_2016", "irma_2017", "ian_2022", "sally_2020")),
          "paper": None, "ok": True, "info": True},
         {"label": "Ian 2022 at 27 months: restored share and under a new owner among restored",

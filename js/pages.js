@@ -1,19 +1,19 @@
 /* Written by tools/sitemap.py from its page list; edit that file. */
 
-export const VERSION = "1";
+export const VERSION = "2";
 
 export const PAGES = [
   {
     "id": "street",
     "file": "index.html",
     "tab": "Two clocks",
-    "title": "A damaged home recovers on two clocks: the structure and the owner"
+    "title": "Physical restoration and ownership continuity: two dimensions of recovery"
   },
   {
     "id": "clocks",
     "file": "clocks.html",
     "tab": "The gap",
-    "title": "Restored, but under a new owner: the gap between the two clocks"
+    "title": "Restored, but under a new owner: restoration against ownership continuity"
   },
   {
     "id": "map",
@@ -31,25 +31,25 @@ export const PAGES = [
     "id": "capital",
     "file": "capital.html",
     "tab": "Financial resources",
-    "title": "Financial resources: where owners were insured and better off, the pre-storm owner stays"
+    "title": "Financial resources: where tracts were insured and better off, the original owner restores"
   },
   {
     "id": "owners",
     "file": "owners.html",
     "tab": "Owner occupancy",
-    "title": "Owner occupancy: residents restore most and clear least, absentee owners wait"
+    "title": "Owner occupancy: resident owner-occupants restore most and clear least"
   },
   {
     "id": "shore",
     "file": "shore.html",
     "tab": "The shore",
-    "title": "The shore: where the storm does most, not where the clocks separate most"
+    "title": "The shore: where structural loss is greatest, not where ownership change among restored homes is"
   },
   {
     "id": "data",
     "file": "data.html",
     "tab": "Data and methods",
-    "title": "Records, measures, models and the hypotheses"
+    "title": "Records, measures, models and hypotheses"
   }
 ];
 

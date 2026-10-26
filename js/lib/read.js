@@ -1,26 +1,28 @@
 /* The reading aids of a page, kept out of the way: a folded "How to read
-   this page" block with the terms the page uses, defined the same way on
-   every page. The figures carry their numbers in hover; the page itself
-   carries one finding line and nothing else. */
+   this page" block with the terms the page uses, defined as in Section 4
+   of the paper and the same way on every page. The figures carry their
+   numbers in hover; the page itself carries one finding line and nothing
+   else. */
 
 import { el } from "./dom.js";
 
 export const TERMS = {
-  clocks: ["The two clocks", "A damaged home recovers on two clocks. The structure clock reads whether the house is repaired, rebuilt, left damaged or cleared; the ownership clock reads whether the pre-storm owner keeps the parcel or sells it."],
-  rwr: ["Recovery without return (RWR)", "A restored home under a new owner. The house came back; the household that owned it before the storm did not keep it. It names an ownership change, not an observed displacement."],
-  ret: ["Recovery with return", "Restored, the same owner name, the homestead exemption still on the roll."],
-  stranded: ["Stranded incumbent", "Not restored, the pre-storm owner still there."],
-  unresolved: ["Unresolved transition", "Not restored, under a new owner."],
-  cleared: ["Cleared lot", "No structure on the roll; the owner may be the same or new."],
-  loss: ["Structural loss", "The share of the house's structure value lost on the first roll after the storm, after the county's reassessment trend. Damaged: a quarter or more. Destroyed: half or more, the line of the federal substantial-damage rule."],
-  restored: ["Restored", "Structure value back to 90% of its pre-storm level after the county trend."],
-  rolls: ["Rolls and months", "Florida's assessment rolls are taken on 1 January. The storm year's roll (s) describes each house before the storm; the four rolls after it, s+1 to s+4, fall about 3, 15, 27 and 39 months after a September landfall."],
-  resident: ["Resident owner-occupant", "An individual or trust with a homestead exemption on the storm year's roll. A non-resident individual has none (a second home or a small landlord); a business entity is a corporation, company, partnership or trust company."],
-  pp: ["pp", "Percentage points: 31% against 28% is 3 points."],
-  ci: ["95% interval", "The range in parentheses. An interval that excludes zero (or one, for a hazard ratio) marks an effect the data can tell from none."],
-  k: ["Incumbent capital K", "The tract's insured share of damaged owners and its median income, standardized and averaged; one SD is one standard deviation of K."],
-  struck: ["Storm-struck tract", "A census tract with FEMA-verified real-property losses of at least 5 per 100 owner-occupied homes."],
-  prespec: ["Pre-specified", "The test and its reading rule were written before the outcome was examined. A check repeats the test another way; a description is reported, not tested."],
+  clocks: ["Physical restoration and ownership continuity", "Two dimensions of housing recovery. Restoration reads whether the structure is repaired, rebuilt, left unrestored or cleared; ownership continuity reads whether the pre-storm owner is still recorded or a new owner is."],
+  rwr: ["Recovery without return", "Restoration under new ownership (RN): a restored home with a different owner recorded. It indicates an ownership transition, not directly observed household displacement."],
+  ret: ["Restoration under original ownership", "Restored (RO), no ownership change, the homestead exemption retained."],
+  stranded: ["Unrestored, original owner", "Not restored, the original owner still recorded."],
+  unresolved: ["Unrestored, new owner", "Not restored, a new owner recorded."],
+  cleared: ["Cleared lot", "No structure recorded on the roll; the owner may be the original one or new."],
+  loss: ["Structural loss (L)", "The proportional decline in assessed structural value between the pre-storm and the first post-storm roll, adjusted for the countywide reassessment trend. L25, L50 and L75: at least 25%, 50% and 75%. Homes with L <10% are the unaffected comparison group."],
+  restored: ["Restored", "The structural value ratio R is at least 90% of the pre-storm value after the reassessment trend (R ≥75% and R ≥100% as sensitivity analyses)."],
+  capped: ["Capped R", "The structural value ratio capped at 100%, a continuous measure of physical recovery."],
+  rolls: ["Rolls and months", "Assessment rolls record conditions as of January 1. The roll of the hurricane year, t, is the pre-storm baseline; t + 1 to t + 4 are the first four post-storm rolls, about 3, 15, 27 and 39 months after a September landfall."],
+  resident: ["Owner type", "On the pre-storm roll: a resident owner-occupant is an individual or trust with a homestead exemption; a nonresident individual has none; a business entity is a corporate or other business owner."],
+  pp: ["pp", "Percentage points: 31% against 28% is 3 pp."],
+  ci: ["95% CI", "The 95% confidence interval in brackets. An interval that excludes zero (or one, for a hazard ratio) marks an association the data can tell from none."],
+  k: ["Financial resources index (K)", "The mean of two tract-level components standardized within season: the insured share of IHP owner registrants and the log of census-tract median household income. Estimates are per unit of K."],
+  struck: ["Affected tract", "A census tract with tract exposure D ≥5: at least 5 FEMA-verified real-property losses per 100 owner-occupied housing units."],
+  spec: ["Main and alternative specifications", "A filled marker is the main specification of Section 4.5; an open marker is one of its alternative specifications (tract clusters, R ≥75% and R ≥100%, a wider reassessment-trend bandwidth, tracts with D ≥20, the DOR hurricane code, the seasons before 2024, tract-adjusted restoration, the sample without Lee County)."],
 };
 
 export const pick = (...keys) => keys.map((k) => TERMS[k]).filter(Boolean);

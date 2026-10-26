@@ -1,10 +1,11 @@
 /* The landing page, Two clocks. A block of a hundred lots stands for the
-   damaged resident-owned homes of one loss bin, one lot per hundredth;
-   the clock moves them through the four rolls after the storm. The height
-   of each house is the structure clock (restored, not restored, cleared)
-   and its roof the ownership clock (green: the pre-storm owner; pink: a
-   new owner). Beside it, the recovery matrix of Figure 1 holds the same
-   shares, and the share of restored homes under a new owner.
+   resident owner-occupied homes of one structural loss category, one lot
+   per hundredth; the clock moves them through the four rolls after the
+   storm. The height of each house is physical restoration (restored,
+   unrestored, cleared) and its roof ownership continuity (green: the
+   original owner; pink: a new owner). Beside it, the recovery pathways of
+   Figure 1 hold the same shares, and the share of restored homes under a
+   new owner (Table 2).
 
    Data: data/street.json (a18 taxonomy_by_loss.csv and rwr_share.csv,
    seasons 2016 to 2021). The lots are a display of the shares, sorted by
@@ -26,10 +27,10 @@ const ORDER = ["rr", "rt", "ur", "ut", "cl"];
 const KIND = { rr: "full", rt: "full", ur: "tarp", ut: "tarp", cl: "cleared" };
 const ROOF = { rr: GREEN, rt: PINK, ur: GREEN, ut: PINK, cl: null };
 const CLASS_NOTE = {
-  rr: "restored by the pre-storm owner",
-  rt: "restored under a new owner",
-  ur: "not restored, same owner",
-  ut: "not restored, new owner",
+  rr: "restored, original owner",
+  rt: "restored, new owner",
+  ur: "unrestored, original owner",
+  ut: "unrestored, new owner",
   cl: "no structure on the roll",
 };
 
@@ -62,7 +63,7 @@ export function streetChart(host, app) {
   const tSeg = segmented(tItems, state.t, (k) => { state.t = Number(k); update(true); writeHash(); });
   const playBtn = el("button.btn-quiet", { type: "button", text: "Run the clock", onclick: () => runClock() });
   const controls = el("div.controls", {}, [
-    el("div.control", {}, [el("span.label", { text: "Structural loss on the first roll after the storm" }), binSeg]),
+    el("div.control", {}, [el("span.label", { text: "Structural loss (L) on the first post-storm roll" }), binSeg]),
     el("div.control", {}, [el("span.label", { text: "Months after landfall" }), tSeg]),
     el("div.control", {}, [el("span.label", { text: " " }), playBtn]),
   ]);
@@ -73,7 +74,7 @@ export function streetChart(host, app) {
   const W = Math.ceil(lotW(span)) + 40;
   const top = 46;
   const H = Math.ceil(span) + top + 24;
-  const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "A block of one hundred lots, one per hundredth of the damaged homes" });
+  const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "A block of one hundred lots, one per hundredth of the homes in the category" });
   const gLots = svg("g");
   const gStorm = svg("g", { opacity: 0 });
   const OX = W / 2;
@@ -97,11 +98,11 @@ export function streetChart(host, app) {
   gStorm.appendChild(stormGlyph(0, 0, 22, INK));
 
   const legend = el("div.legend", {}, [
-    el("span.item", {}, [icon("full", GREEN), "restored, pre-storm owner"]),
+    el("span.item", {}, [icon("full", GREEN), "restored, original owner"]),
     el("span.item", {}, [icon("full", PINK), "restored, new owner"]),
-    el("span.item", {}, [icon("tarp", GREEN), "not restored"]),
+    el("span.item", {}, [icon("tarp", GREEN), "unrestored"]),
     el("span.item", {}, [icon("cleared", null), "cleared lot"]),
-    el("span.item.note", {}, ["one lot = one in a hundred damaged homes"]),
+    el("span.item.note", {}, ["one lot = one in a hundred homes of the category"]),
   ]);
   const figure = el("div.figure", {}, [root, legend]);
 
@@ -109,7 +110,7 @@ export function streetChart(host, app) {
   const cellNodes = {};
   const cell = (c) => {
     const node = el(`div.cell.${c}`, { style: { background: CLASS[c].fill } }, [
-      c === "rt" ? el("span.tag", { text: "RWR" }) : null,
+      c === "rt" ? el("span.tag", { text: "RN" }) : null,
       el("span.v", { text: "" }),
       el("span.n", { text: CLASS_NOTE[c] }),
     ]);
@@ -121,7 +122,7 @@ export function streetChart(host, app) {
   };
   const head = el("h4", { text: "" });
   const matrix = el("div.matrix", { "aria-live": "polite" }, [
-    el("span"), el("span.mh", { text: "Ownership retained" }), el("span.mh", { text: "Ownership transferred" }),
+    el("span"), el("span.mh", { text: "Original owner" }), el("span.mh", { text: "New owner" }),
     el("span.rh", { text: "Restored" }), cell("rr"), cell("rt"),
     el("span.rh", { text: "Unrestored" }), cell("ur"), cell("ut"),
     el("span.rh", { text: "Cleared" }), cell("cl"),
@@ -136,18 +137,18 @@ export function streetChart(host, app) {
 
   howto(host, {
     lines: [
-      "Each lot stands for one in a hundred damaged resident-owned homes of the chosen loss bin, seasons 2016 to 2021 (every season reaches the fourth roll). The lots are sorted by state; they show shares, not single homes followed over time.",
-      "The height of a house is the structure clock: a full house is restored, a low box under a tarp is not, an empty lot is cleared. The roof is the ownership clock: green is the pre-storm owner, pink a new owner.",
-      "The matrix beside it is Figure 1 of the paper with the shares filled in. Hover a lot or a cell for the states inside it and their 95% intervals; click a cell to keep its lots lit.",
+      "Each lot stands for one in a hundred resident owner-occupied homes of the chosen structural loss category, seasons 2016 to 2021 (every season reaches the fourth roll). The lots are sorted by state; they show shares, not single homes followed over time.",
+      "The height of a house is physical restoration: a full house is restored, a low box under a tarp is unrestored, an empty lot is cleared. The roof is ownership continuity: green is the original owner, pink a new owner.",
+      "The matrix beside it holds the recovery pathways of Figure 1 with the shares of Table 2 filled in. Hover a lot or a cell for the states inside it and their 95% CIs; click a cell to keep its lots lit.",
     ],
-    terms: pick("clocks", "rwr", "ret", "stranded", "unresolved", "cleared", "loss", "restored", "rolls"),
+    terms: pick("clocks", "ret", "rwr", "stranded", "unresolved", "cleared", "loss", "restored", "rolls"),
   });
 
   /* ---- the finding line, from the data */
   const c4 = classShares(S.cells[">=.75"][4], S.states);
   const r4 = S.rwr[">=.75"][4];
   const r4lo = S.rwr[".25-.50"][4];
-  finding(`Of the resident-owned homes that lost three quarters or more of their structure, <b>${fmt.pct(c4.rr + c4.rt)}</b> stood restored 39 months after landfall, but only <b>${fmt.pct(c4.rr)}</b> under the owner who held them before the storm: <span class="rwr">${fmt.num(r4.share)}</span> of the restored homes had changed hands, against ${fmt.num(r4lo.share)} where the loss was a quarter to a half.`);
+  finding(`Of the resident owner-occupied homes with structural loss of at least 75%, <b>${fmt.pct(c4.rr + c4.rt)}</b> were restored 39 months after landfall, but only <b>${fmt.pct(c4.rr)}</b> under their original owners: <span class="rwr">${fmt.pct(r4.share)}</span> of the restored homes were under a new owner, against ${fmt.pct(r4lo.share)} where the loss was 25% to under 50%.`);
 
   /* ---- drawing */
   let current = null;
@@ -183,16 +184,16 @@ export function streetChart(host, app) {
   function paintSide() {
     const bin = S.bins.find((b) => b.key === state.bin);
     if (state.t === 0) {
-      head.textContent = "The recovery matrix, before the storm";
+      head.textContent = "Recovery pathways (Figure 1), before the storm";
       for (const c of ORDER) cellNodes[c].querySelector(".v").textContent = c === "rr" ? "100%" : "0";
       big.textContent = "none yet";
-      bigWhat.textContent = "Every home stands under the owner who held it for at least two years before the storm.";
-      nLine.textContent = `${bin.label}: ${fmt.count(S.cells[state.bin][1].n)} damaged resident-owned homes.`;
+      bigWhat.textContent = "Every home is under the owner recorded for at least two rolls before the storm.";
+      nLine.textContent = `${bin.label}: ${fmt.count(S.cells[state.bin][1].n)} resident owner-occupied homes.`;
       return;
     }
     const cellData = S.cells[state.bin][state.t];
     const shares = classShares(cellData, S.states);
-    head.textContent = `The recovery matrix, ${fmt.mo(months[state.t])} months after landfall`;
+    head.textContent = `Recovery pathways (Figure 1), ${fmt.mo(months[state.t])} months after landfall`;
     for (const c of ORDER) {
       const v = cellNodes[c].querySelector(".v");
       v.setAttribute("data-count", String(shares[c]));
@@ -203,13 +204,13 @@ export function streetChart(host, app) {
     const r = S.rwr[state.bin][state.t];
     if (!r || !r.restored) {
       big.textContent = "none yet";
-      bigWhat.textContent = "No damaged home is back to 90% of its pre-storm structure value on the first roll.";
+      bigWhat.textContent = "No home has reached 90% of its pre-storm structural value on the first post-storm roll.";
     } else {
-      big.innerHTML = `${fmt.num(r.share)}<small>${fmt.ci(r.lo, r.hi, 2)}${fmt.stars(r.p)}</small>`;
+      big.innerHTML = `${fmt.pct(r.share)}<small>${fmt.ci(100 * r.lo, 100 * r.hi, 0)}${fmt.stars(r.p)}</small>`;
       bigWhat.textContent = `${fmt.count(r.new_owner)} of ${fmt.count(r.restored)} restored homes` + (r.p !== null && r.p !== undefined
-        ? `; against the homes that lost .25 to .50, ${fmt.pval(r.p)}.` : ".");
+        ? `; against the 25% ≤ L <50% category, ${fmt.pval(r.p)}.` : ".");
     }
-    nLine.textContent = `${bin.label}: ${fmt.count(cellData.n)} damaged resident-owned homes on this roll.`;
+    nLine.textContent = `${bin.label}: ${fmt.count(cellData.n)} resident owner-occupied homes on this roll.`;
   }
 
   function light(c) {
@@ -221,7 +222,7 @@ export function streetChart(host, app) {
     const c = lot.cls;
     if (!state.lit) light(c === "before" ? null : c);
     if (c === "before") {
-      tip.show(ev, { title: "Before the storm", rows: [["owner", "the pre-storm owner"], ["held since", "two rolls before the storm"]] });
+      tip.show(ev, { title: "Before the storm", rows: [["owner", "the original owner"], ["recorded since", "at least two rolls before the storm"]] });
       return;
     }
     const cellData = S.cells[state.bin][state.t];
@@ -232,7 +233,7 @@ export function streetChart(host, app) {
       rows.push([s.label, `${fmt.pct(v, 1)} ${fmt.ci(lo * 100, hi * 100, 1)}`]);
     }
     rows.push(["homes on the roll", fmt.count(cellData.n)]);
-    tip.show(ev, { title: `${CLASS[c].label}: ${S.classes.find((x) => x.key === c).name}`, rows, note: "Shares of damaged resident-owned homes with 95% intervals." });
+    tip.show(ev, { title: `${CLASS[c].label}: ${S.classes.find((x) => x.key === c).name}`, rows, note: "Shares of the resident owner-occupied homes of the category, with 95% CIs." });
   }
 
   function sweep() {
@@ -294,18 +295,18 @@ export function streetChart(host, app) {
   const rlo = S.rwr[".25-.50"][4];
   const go = (bin, t, lit = null) => () => { state.bin = bin; state.t = t; state.lit = lit; update(true); };
   const steps = [
-    { cap: "Before the storm: a hundred resident-owned homes, each held by its owner for at least two years.", ms: 2600, run: go(">=.75", 0) },
-    { cap: `Three months after landfall the storm has taken three quarters or more of each structure; ${a1.cl} lots are already cleared.`, ms: 3400, run: go(">=.75", 1) },
+    { cap: "Before the storm: a hundred resident owner-occupied homes, each under the same owner for at least two rolls.", ms: 2600, run: go(">=.75", 0) },
+    { cap: `Three months after landfall each home has lost at least 75% of its structural value (L75); ${a1.cl} lots are already cleared.`, ms: 3400, run: go(">=.75", 1) },
     { cap: "Fifteen months: the first houses stand restored, some under a pink roof, a new owner.", ms: 3000, run: go(">=.75", 2) },
-    { cap: "Twenty-seven months: restoration continues on both clocks.", ms: 2600, run: go(">=.75", 3) },
-    { cap: `Thirty-nine months: ${a4.rr} restored by the pre-storm owner, ${a4.rt} under a new owner, ${a4.ur + a4.ut} not restored, ${a4.cl} cleared.`, ms: 4200, run: go(">=.75", 4) },
-    { cap: `Of the restored homes, ${fmt.num(r4.share)} changed hands: recovery without return.`, ms: 3800, run: go(">=.75", 4, "rt") },
-    { cap: `Where the loss was a quarter to a half, the share is ${fmt.num(rlo.share)}: the worse the loss, the more often the house returns to someone else.`, ms: 4400, run: go(".25-.50", 4, "rt") },
+    { cap: "Twenty-seven months: restoration continues under original and new owners.", ms: 2600, run: go(">=.75", 3) },
+    { cap: `Thirty-nine months: ${a4.rr} restored under the original owner, ${a4.rt} under a new owner, ${a4.ur + a4.ut} unrestored, ${a4.cl} cleared.`, ms: 4200, run: go(">=.75", 4) },
+    { cap: `Of the restored homes, ${fmt.pct(r4.share)} are under a new owner: recovery without return.`, ms: 3800, run: go(">=.75", 4, "rt") },
+    { cap: `Where the loss was 25% to under 50%, the share is ${fmt.pct(rlo.share)}: the greater the structural loss, the more often a restored home has a new owner.`, ms: 4400, run: go(".25-.50", 4, "rt") },
   ];
   tour({
-    name: "the two clocks",
+    name: "two clocks",
     steps,
     after: () => {},
     rest: () => { state.bin = ">=.75"; state.t = 4; state.lit = null; update(false); writeHash(); },
-  }).attach(tourHost, { autoplay: !linked, idle: linked ? "A linked view; press Play for the guided tour." : undefined });
+  }).attach(tourHost, { autoplay: !linked, figure });
 }
